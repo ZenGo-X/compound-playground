@@ -1,0 +1,19 @@
+{
+  "name": "compund-playground",
+  "version": "0.1.0",
+  "description": "Ethereum ERC20 playground for ZenGo integration",
+  "main": "./dist/src/index.js",
+  "types": "./dist/types/index.d.ts",
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "tsc"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "^12.7.2",
+    "decimal.js": "^10.2.0",
+    "ethereumjs-tx": "^2.1.0",
+    "web3": "^1.2.1"
+  }
+}
