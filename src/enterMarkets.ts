@@ -2,18 +2,29 @@ const EthereumTx = require('ethereumjs-tx').Transaction;
 import Web3 from 'web3';
 const web3 = new Web3(new Web3.providers.HttpProvider('https://ropsten.infura.io/v3/3d93a3a00252437cb50e9a81ad147c99'));
 import {config} from './config';
-import {CETH_ROPSTEN_JSON_INTERFACE} from "./cEth-interface";
+import {COMPTROLLER_INTERFACE} from "./comptroller-interface";
 
 const myContract = new web3.eth.Contract(
-    CETH_ROPSTEN_JSON_INTERFACE,
-    config.tokenContractAddress
+    COMPTROLLER_INTERFACE,
+    config.comptrollerContract
 );
 
-const payableAmount:number = 0.01
-const data = myContract.methods.mint().encodeABI();
+
+// List of all markets on ropsten chain, should be in separate config
+const markets_list: string[] = [
+"0x189ca88be39c9c1b8c8dd437f5ff1db1f584b14b",
+"0x2b536482a01e620ee111747f8334b395a42a555e",
+"0x42a628e0c5f3767930097b34b08dcf77e78e4f2b",
+"0xa3c2c1618214549281e1b15dee9d682c8aa0dc1c",
+"0x43a1363afb28235720fcbdf0c2dab7759091f7e0",
+"0x06e728d7907c164649427d2acfd4c81669d453bf",
+"0xdff375162cfe7d77473c1bec4560dede974e138c",
+]
+
+const data = myContract.methods.enterMarkets(markets_list).encodeABI();
 console.log('data =', data);
 
-(async function mintCEther() {
+(async function enterMarkets() {
     const nonce = await web3.eth.getTransactionCount(config.senderAddress);
     let gasPrice = Number(await web3.eth.getGasPrice());
     console.log('gasPrice =', gasPrice);
@@ -22,27 +33,24 @@ console.log('data =', data);
 
     let gasLimit:number = await web3.eth.estimateGas({
         from: config.senderAddress,
-        to: config.tokenContractAddress,
+        to: config.comptrollerContract,
         data
     });
     console.log('gasLimit =', gasLimit);
-    let gasLimitHex = web3.utils.toHex(gasLimit * 10)
+    // Might need to pad transaction
+    let gasLimitHex = web3.utils.toHex(gasLimit)
     console.log('gasLimit #2 =', gasLimitHex);
 
     let balance = await web3.eth.getBalance(config.senderAddress);
     console.log(`Balance ${balance}`);
 
-    const toMint = Number(web3.utils.toWei('0.001', 'ether'));
-    const toMintHex = `0x${toMint.toString(16)}`
-    console.log(`To mint ${toMintHex}`);
-
     const txParams = {
         nonce,
         gasPrice: gasPriceHex,
         gasLimit: gasLimitHex,
-        to: config.tokenContractAddress,
+        to: config.comptrollerContract,
         data,
-        value: toMintHex
+        value: "0x00"
     };
     const tx = new EthereumTx(txParams, {
         chain: 'ropsten'
@@ -60,15 +68,12 @@ console.log('data =', data);
         .on('transactionHash', (hash: string) => {
             console.log('-'.repeat(20));
             console.log('on(transactionHash): hash =', hash);
-            // on(transactionHash): hash = 0xcf21ed6284774eaa2446417bcbdd5ddeaa47d712f1c46c4b729165ac7dff58b8
-
-            // Explorer link is: https://ropsten.etherscan.io/tx/0xcf21ed6284774eaa2446417bcbdd5ddeaa47d712f1c46c4b729165ac7dff58b8
         })
         .on('receipt', (receipt: any) => {
             console.log('-'.repeat(20));
             console.log('on(receipt): receipt =', receipt)
         })
-        .on('confirmation', (confirmation: number, receipt: any) => {  // up to 12th confirmation
+        .on('confirmation', (confirmation: number, receipt: any) => { 
             console.log('-'.repeat(20));
             console.log('on(confirmation): confirmation =', confirmation);
             console.log('on(confirmation): receipt =', receipt)
@@ -78,5 +83,3 @@ console.log('data =', data);
             console.log('on(error): error =', error)
         });
 })();
-
-
