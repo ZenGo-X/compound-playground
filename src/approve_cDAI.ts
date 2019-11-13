@@ -2,47 +2,65 @@ const EthereumTx = require('ethereumjs-tx').Transaction;
 import Web3 from 'web3';
 const web3 = new Web3(new Web3.providers.HttpProvider('https://ropsten.infura.io/v3/3d93a3a00252437cb50e9a81ad147c99'));
 import {config} from './config';
-import {CETH_ROPSTEN_JSON_INTERFACE} from "./cEth-interface";
+import {ERC20_INERFACE} from "./erc20-interface";
+import {CDAI_JSON_INTERFACE} from "./cDAI-interface";
 
-const myContract = new web3.eth.Contract(
-    CETH_ROPSTEN_JSON_INTERFACE,
-    config.cETHContract
+const cDAIContract = new web3.eth.Contract(
+    CDAI_JSON_INTERFACE,
+    config.cDAIContract
 );
 
-const payableAmount:number = 0.01
-const data = myContract.methods.mint().encodeABI();
-console.log('data =', data);
 
-(async function mintCEther() {
+
+
+(async function approveMarket() {
+
+    const cDAIcall = cDAIContract.methods.underlying().encodeABI();
+
+    let underlyingAddress = await web3.eth.call({
+      to: config.cDAIContract,
+      data: cDAIcall,
+    })
+    // Returned result needs to be truncated to legal address length
+    underlyingAddress = "0x" + underlyingAddress.substr(-40)
+    console.log(`Underlying address of DAI ${underlyingAddress}`);
+
     const nonce = await web3.eth.getTransactionCount(config.senderAddress);
     let gasPrice = Number(await web3.eth.getGasPrice());
     console.log('gasPrice =', gasPrice);
     let gasPriceHex = web3.utils.toHex(gasPrice);
     console.log('gasPrice #2 =', gasPriceHex);
 
-    let gasLimit:number = await web3.eth.estimateGas({
-        from: config.senderAddress,
-        to: config.cETHContract,
-        data
-    });
-    console.log('gasLimit =', gasLimit);
-    let gasLimitHex = web3.utils.toHex(gasLimit * 2)
-    console.log('gasLimit #2 =', gasLimitHex);
 
     let balance = await web3.eth.getBalance(config.senderAddress);
     console.log(`Balance ${balance}`);
 
-    const toMint = Number(web3.utils.toWei('0.001', 'ether'));
-    const toMintHex = `0x${toMint.toString(16)}`
-    console.log(`To mint ${toMintHex}`);
+
+    const DAIContract = new web3.eth.Contract(
+        ERC20_INERFACE,
+        underlyingAddress,
+    );
+
+    const max_val = "0xffffffffffffffffffffffffffffffffffffffff";
+    const DAIcall = cDAIContract.methods.approve(config.cDAIContract, max_val).encodeABI();
+
+    let gasLimit:number = await web3.eth.estimateGas({
+        from: config.senderAddress,
+        to: underlyingAddress,
+        data: DAIcall
+    });
+    console.log('gasLimit =', gasLimit);
+    // Might need to pad transaction
+    let gasLimitHex = web3.utils.toHex(gasLimit)
+    console.log('gasLimit #2 =', gasLimitHex);
 
     const txParams = {
         nonce,
         gasPrice: gasPriceHex,
         gasLimit: gasLimitHex,
-        to: config.cETHContract,
-        data,
-        value: toMintHex
+        to: underlyingAddress,
+        data: DAIcall,
+        value: "0x00"
     };
     const tx = new EthereumTx(txParams, {
         chain: 'ropsten'
@@ -75,5 +93,3 @@ console.log('data =', data);
             console.log('on(error): error =', error)
         });
 })();
-
-
