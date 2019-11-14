@@ -11,8 +11,6 @@ const cDAIContract = new web3.eth.Contract(
 );
 
 
-
-
 (async function approveMarket() {
 
     const cDAIcall = cDAIContract.methods.underlying().encodeABI();
@@ -38,6 +36,8 @@ const cDAIContract = new web3.eth.Contract(
 
     const DAIContract = new web3.eth.Contract(
         ERC20_INERFACE,
+
+
         underlyingAddress,
     );
 

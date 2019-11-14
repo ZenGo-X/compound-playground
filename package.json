@@ -15,7 +15,6 @@
     "@types/node": "^12.7.2",
     "decimal.js": "^10.2.0",
     "ethereumjs-tx": "^2.1.0",
-    "global": "^4.4.0",
     "typescript": "^3.7.2",
     "web3": "^1.2.1"
   },
