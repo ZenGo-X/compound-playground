@@ -6,15 +6,17 @@ import path from "path";
 import low from "lowdb";
 import FileSync from "lowdb/adapters/FileSync";
 import { CompAddress } from "./compAddress";
+import { AbiItem } from "web3-utils";
 
 const EthereumTx = require("ethereumjs-tx").Transaction;
 import Web3 from "web3";
 
 // import interfaces: Should be the same for mainnet/testnet
-import { CETH_ROPSTEN_JSON_INTERFACE } from "./cEth-interface";
+import { CETH_JSON_INTERFACE } from "./cEth-interface";
 import { CDAI_JSON_INTERFACE } from "./cDAI-interface";
 import { COMPTROLLER_INTERFACE } from "./comptroller-interface";
 import { ERC20_INERFACE } from "./erc20-interface";
+import { PRICE_ORACLE_INTERFACE } from "./priceOracle-interface";
 
 // TODO: Config based on network type
 const web3 = new Web3(
@@ -45,10 +47,45 @@ export class Client {
   }
 
   public async getBalance(): Promise<string> {
-    console.log(this.address);
     const balance = await web3.eth.getBalance(this.address.getAddress());
     const balanceInEth = web3.utils.fromWei(balance, "ether");
     return balanceInEth;
+  }
+
+  public getBalanceCETH(): Promise<string> {
+    return this.getBalanceCToken(CETH_JSON_INTERFACE, config.cETHContract);
+  }
+
+  public getBalanceCDAI(): Promise<string> {
+    return this.getBalanceCToken(CDAI_JSON_INTERFACE, config.cDAIContract);
+  }
+
+  private async getBalanceCToken(
+    iface: AbiItem[],
+    contract_address: string
+  ): Promise<string> {
+    const myContract = new web3.eth.Contract(iface, contract_address);
+    let [
+      error,
+      lendBallance,
+      borrowBalance,
+      exchangeRate
+    ] = await myContract.methods
+      .getAccountSnapshot(this.address.getAddress())
+      .call();
+    const decimals = await myContract.methods.decimals().call();
+    const base: Decimal = new Decimal(10);
+    let coefficient: Decimal = base.pow(-decimals);
+
+    const lendBallanceDec: Decimal = coefficient.mul(lendBallance);
+    const exchangeRateDec: Decimal = coefficient.mul(exchangeRate);
+
+    const balanceOfUnderlying = lendBallanceDec.mul(exchangeRateDec);
+    // I can explain 18 but not another 2 zeros
+    coefficient = base.pow(-20);
+
+    const finalBalance: Decimal = coefficient.mul(balanceOfUnderlying);
+    return finalBalance.toString();
   }
 
   private async restoreOrGenerate(): Promise<CompAddress> {

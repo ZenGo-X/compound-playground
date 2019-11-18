@@ -1,6 +1,6 @@
 import { AbiItem } from "web3-utils";
 
-export const CETH_ROPSTEN_JSON_INTERFACE: AbiItem[] = [
+export const CETH_JSON_INTERFACE: AbiItem[] = [
   {
     constant: true,
     inputs: [],

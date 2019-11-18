@@ -26,7 +26,20 @@ program
 
 program
     .command('balance')
+    .option('-ce, --ceth')
+    .option('-cd, --cdai')
     .action(async (options) => {
+        await client.init();
+        if (options.ceth) {
+            console.log("Checking for balance of cETH");
+            let balance = await client.getBalanceCETH();
+            console.log(balance);
+        }
+        if (options.cdai) {
+            console.log("Checking for balance of cDAI");
+            let balance = await client.getBalanceCDAI();
+            console.log(balance);
+        }
     });
 
 program.parse(process.argv);

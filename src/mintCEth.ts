@@ -6,10 +6,10 @@ const web3 = new Web3(
   )
 );
 import { config } from "./config";
-import { CETH_ROPSTEN_JSON_INTERFACE } from "./cEth-interface";
+import { CETH_JSON_INTERFACE } from "./cEth-interface";
 
 const myContract = new web3.eth.Contract(
-  CETH_ROPSTEN_JSON_INTERFACE,
+  CETH_JSON_INTERFACE,
   config.cETHContract
 );
 

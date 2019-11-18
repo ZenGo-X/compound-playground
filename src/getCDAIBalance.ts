@@ -53,8 +53,24 @@ async function getPrice() {
   return actualPrice;
 }
 
+async function getExchangeRate() {
+  const price = await cDAIcontract.methods
+    .getUnderlyingPrice(config.cDAIContract)
+    .call();
+  console.log("price =", price); // in the smallest unit (w.r.t decimals defined in contract)
+  // balance = 6
+  const decimals = await cDAIcontract.methods.decimals().call();
+  console.log("decimals =", decimals);
+  // decimals = 18
+  const base: Decimal = new Decimal(10);
+  const coefficient: Decimal = base.pow(-decimals);
+  const actualPrice: Decimal = coefficient.mul(price);
+  console.log("Actual Price =", actualPrice.toString());
+  return actualPrice;
+}
+
 (async () => {
   const balance = await getBalance();
   const price = await getPrice();
-  console.log("Balance in underlying:", balance.mul(price).toString());
+  console.log("Balance in underlying:", balance.dividedBy(price).toString());
 })();
