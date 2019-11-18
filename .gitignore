@@ -42,3 +42,5 @@ dist/**/*
 yarn.lock
 
 node_modules
+
+client_db

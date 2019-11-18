@@ -1,0 +1,32 @@
+#!/usr/bin/env node
+
+const {Client} = require('../dist/src');
+
+const program = require('commander');
+
+const client = new Client();
+
+
+program
+    .command('address')
+    .option('-i, --init')
+    .option('-s, --show')
+    .option('-gb, --get_balance')
+    .action(async (options) => {
+        await client.init();
+        if (options.show) {
+            let a = await client.getAddress();
+            console.log(a);
+        }
+        if (options.get_balance) {
+            let a = await client.getBalance();
+            console.log(a);
+        }
+    });
+
+program
+    .command('balance')
+    .action(async (options) => {
+    });
+
+program.parse(process.argv);

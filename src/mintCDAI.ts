@@ -68,11 +68,11 @@ console.log("data =", data);
       console.log("-".repeat(20));
       console.log("on(receipt): receipt =", receipt);
     })
-    .on("confirmation", (confirmation: number, receipt: any) => {
-      console.log("-".repeat(20));
-      console.log("on(confirmation): confirmation =", confirmation);
-      console.log("on(confirmation): receipt =", receipt);
-    })
+    // .on("confirmation", (confirmation: number, receipt: any) => {
+    //   console.log("-".repeat(20));
+    //   console.log("on(confirmation): confirmation =", confirmation);
+    //   console.log("on(confirmation): receipt =", receipt);
+    // })
     .on("error", (error: Error) => {
       console.log("-".repeat(20));
       console.log("on(error): error =", error);
