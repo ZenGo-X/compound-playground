@@ -15,3 +15,5 @@ export const markets_list: string[] = [
   "0x06e728d7907c164649427d2acfd4c81669d453bf",
   "0xdff375162cfe7d77473c1bec4560dede974e138c"
 ];
+
+export const cTokenAPI = "https://api.compound.finance/api/v2/ctoken";

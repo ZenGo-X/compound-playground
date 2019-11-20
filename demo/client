@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const {Client} = require('../dist/src');
+const {getAPR} = require('../dist/src')
 
 const program = require('commander');
 
@@ -41,6 +42,14 @@ program
             let balance = await client.getBalanceDAI();
             console.log(balance);
         }
+    });
+
+program
+    .command('apr <symbol>')
+    .action(async (symbol) => {
+        let apr = await getAPR(symbol);
+        apr_num = Number(apr) * 100;
+        console.log (parseFloat(Math.round(apr_num * 100) / 100).toFixed(2) + "%")
     });
 
 program

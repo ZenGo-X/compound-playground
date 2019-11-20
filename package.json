@@ -17,6 +17,7 @@
     "decimal.js": "^10.2.0",
     "ethereumjs-tx": "^2.1.0",
     "lowdb": "^1.0.0",
+    "node-fetch": "^2.6.0",
     "typescript": "^3.7.2",
     "web3": "^1.2.1"
   },
