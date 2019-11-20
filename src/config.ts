@@ -8,3 +8,4 @@ export const config = {
   comptrollerContract: "0xb081cf57b1e422b3e627544ec95992cbe8eaf9cb",
   priceOracleContract: "0xc7e20cf485b8e0bcec3e2fcc23e3ad93b1b0cb39"
 };
+

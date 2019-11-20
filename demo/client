@@ -11,35 +11,78 @@ program
     .command('address')
     .option('-i, --init')
     .option('-s, --show')
-    .option('-gb, --get_balance')
     .action(async (options) => {
         await client.init();
         if (options.show) {
             let a = await client.getAddress();
             console.log(a);
         }
-        if (options.get_balance) {
-            let a = await client.getBalance();
-            console.log(a);
-        }
     });
 
 program
-    .command('balance')
-    .option('-ce, --ceth')
-    .option('-cd, --cdai')
-    .action(async (options) => {
+    .command('balance <symbol>')
+    .action(async (symbol) => {
         await client.init();
-        if (options.ceth) {
+        if (symbol === "ceth") {
             console.log("Checking for balance of cETH");
             let balance = await client.getBalanceCETH();
             console.log(balance);
         }
-        if (options.cdai) {
+        if (symbol === "cdai") {
             console.log("Checking for balance of cDAI");
             let balance = await client.getBalanceCDAI();
             console.log(balance);
         }
+        if (symbol == "eth") {
+            let balance = await client.getBalanceETH();
+            console.log(balance);
+        }
+        if (symbol == "dai") {
+            let balance = await client.getBalanceDAI();
+            console.log(balance);
+        }
+    });
+
+program
+    .command('mint <symbol> <amount>')
+    .action(async (symbol, amount) => {
+        await client.init();
+        if (symbol === "ceth") {
+            client.mintCETH(amount)
+        }
+        if (symbol === "cdai") {
+            client.mintCDAI(amount)
+        }
+    });
+
+program
+    .command('redeem <symbol> <amount>')
+    .action(async (symbol, amount) => {
+        await client.init();
+        if (symbol === "ceth") {
+            client.redeemCETH(amount)
+        }
+        if (symbol === "cdai") {
+            client.redeemCDAI(amount)
+        }
+    });
+
+
+program
+    .command('approve')
+    .action(async (symbol) => {
+        await client.init();
+        if (symbol === 'cdai') {
+            console.log("Approve DAI");
+            await client.approveCDAI();
+        }
+    });
+
+program
+    .command('enter')
+    .action(async (options) => {
+        await client.init();
+        await client.enterMarkets();
     });
 
 program.parse(process.argv);
