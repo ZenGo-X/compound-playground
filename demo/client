@@ -77,6 +77,24 @@ program
     });
 
 program
+    .command('estimate <symbol> <amount>')
+    .action(async (symbol, amount) => {
+        await client.init();
+        if (symbol === "ceth") {
+            client.estimateCETH(amount)
+        }
+        if (symbol === "cdai") {
+            client.estimateCDAI(amount)
+        }
+        if (symbol === "cusdc") {
+            client.estimateCUSDC(amount)
+        }
+        if (symbol === "crep") {
+            client.estimateCREP(amount)
+        }
+    });
+
+program
     .command('redeem <symbol> <amount>')
     .action(async (symbol, amount) => {
         await client.init();

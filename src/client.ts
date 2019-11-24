@@ -198,6 +198,40 @@ export class Client {
     await this.executeTX(contract_address, data, "0x0");
   }
 
+  public async estimateCDAI(amount: string) {
+    await this.estimateCToken(
+      CTOKEN_JSON_INTERFACE,
+      config.cDAIContract,
+      amount
+    );
+  }
+
+  private async estimateCToken(
+    iface: AbiItem[],
+    contract_address: string,
+    amount: string
+  ) {
+    const toMint = web3.utils.toWei(amount, "ether");
+    const toMintHex = web3.utils.toHex(toMint);
+
+    const myContract = new web3.eth.Contract(iface, contract_address);
+    const data = myContract.methods.mint(toMintHex).encodeABI();
+    await this.estimateTX(contract_address, data, "0x0");
+  }
+
+  // Minting Ceth is different as there is not erc20 token
+  public async estimateCETH(amount: string) {
+    const myContract = new web3.eth.Contract(
+      CETH_JSON_INTERFACE,
+      config.cETHContract
+    );
+    const data = myContract.methods.mint().encodeABI();
+    const nonce = await web3.eth.getTransactionCount(this.address.getAddress());
+    const toMint = web3.utils.toWei(amount, "ether");
+    const toMintHex = web3.utils.toHex(toMint);
+    this.estimateTX(config.cETHContract, data, toMintHex);
+  }
+
   /// Redeem Tokens ///
   public async redeemCETH(amount: string) {
     this.redeemCToken(CETH_JSON_INTERFACE, config.cETHContract, amount);
@@ -304,6 +338,26 @@ export class Client {
     const adapter = new FileSync(`${CLIENT_DB_PATH}/db.json`);
     this.db = low(adapter);
     this.db.defaults().write();
+  }
+
+  private async estimateTX(
+    contract_address: string,
+    data: string,
+    value: string
+  ) {
+    const nonce = await web3.eth.getTransactionCount(this.address.getAddress());
+    let gasPrice = Number(await web3.eth.getGasPrice());
+    let gasPriceHex = web3.utils.toHex(gasPrice);
+
+    let gasLimit: number = await web3.eth.estimateGas({
+      from: this.address.getAddress(),
+      to: contract_address,
+      data: data,
+      value: value
+    });
+    let gasLimitHex = web3.utils.toHex(gasLimit);
+    console.log("Gas Price: ", gasPrice);
+    console.log("Gas Limit: ", gasLimit);
   }
 
   /**
