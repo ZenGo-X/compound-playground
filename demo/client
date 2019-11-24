@@ -25,13 +25,15 @@ program
     .action(async (symbol) => {
         await client.init();
         if (symbol === "ceth") {
-            console.log("Checking for balance of cETH");
             let balance = await client.getBalanceCETH();
             console.log(balance);
         }
         if (symbol === "cdai") {
-            console.log("Checking for balance of cDAI");
             let balance = await client.getBalanceCDAI();
+            console.log(balance);
+        }
+        if (symbol === "cusdc") {
+            let balance = await client.getBalanceCUSDC();
             console.log(balance);
         }
         if (symbol == "eth") {
@@ -40,6 +42,10 @@ program
         }
         if (symbol == "dai") {
             let balance = await client.getBalanceDAI();
+            console.log(balance);
+        }
+        if (symbol == "usdc") {
+            let balance = await client.getBalanceUSDC();
             console.log(balance);
         }
     });
@@ -62,6 +68,12 @@ program
         if (symbol === "cdai") {
             client.mintCDAI(amount)
         }
+        if (symbol === "cusdc") {
+            client.mintCUSDC(amount)
+        }
+        if (symbol === "crep") {
+            client.mintCREP(amount)
+        }
     });
 
 program
@@ -74,16 +86,27 @@ program
         if (symbol === "cdai") {
             client.redeemCDAI(amount)
         }
+        if (symbol === "cusdc") {
+            client.redeemCUSDC(amount)
+        }
     });
 
 
 program
-    .command('approve')
-    .action(async (symbol) => {
+    .command('approve <symbol> <amount>')
+    .action(async (symbol, amount) => {
         await client.init();
         if (symbol === 'cdai') {
             console.log("Approve DAI");
-            await client.approveCDAI();
+            await client.approveCDAI(amount);
+        }
+        if (symbol === 'cusdc') {
+            console.log("Approve CUSDC");
+            await client.approveCUSDC(amount);
+        }
+        if (symbol === 'crep') {
+            console.log("Approve CREP");
+            await client.approveCREP(amount);
         }
     });
 

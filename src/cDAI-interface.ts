@@ -1,6 +1,6 @@
 import { AbiItem } from "web3-utils";
 
-export const CDAI_JSON_INTERFACE: AbiItem[] = [
+export const CTOKEN_JSON_INTERFACE: AbiItem[] = [
   {
     constant: true,
     inputs: [],

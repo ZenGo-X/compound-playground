@@ -13,7 +13,7 @@ import Web3 from "web3";
 
 // import interfaces: Should be the same for mainnet/testnet
 import { CETH_JSON_INTERFACE } from "./cEth-interface";
-import { CDAI_JSON_INTERFACE } from "./cDAI-interface";
+import { CTOKEN_JSON_INTERFACE } from "./cDAI-interface";
 import { COMPTROLLER_INTERFACE } from "./comptroller-interface";
 import { ERC20_INERFACE } from "./erc20-interface";
 import { PRICE_ORACLE_INTERFACE } from "./priceOracle-interface";
@@ -69,8 +69,16 @@ export class Client {
 
   public async getBalanceDAI(): Promise<string> {
     const balance = await this.getBalanceToken(
-      CDAI_JSON_INTERFACE,
+      CTOKEN_JSON_INTERFACE,
       config.cDAIContract
+    );
+    return balance;
+  }
+
+  public async getBalanceUSDC(): Promise<string> {
+    const balance = await this.getBalanceToken(
+      CTOKEN_JSON_INTERFACE,
+      config.cUSDCContract
     );
     return balance;
   }
@@ -102,7 +110,11 @@ export class Client {
   }
 
   public getBalanceCDAI(): Promise<string> {
-    return this.getBalanceCToken(CDAI_JSON_INTERFACE, config.cDAIContract);
+    return this.getBalanceCToken(CTOKEN_JSON_INTERFACE, config.cDAIContract);
+  }
+
+  public getBalanceCUSDC(): Promise<string> {
+    return this.getBalanceCToken(CTOKEN_JSON_INTERFACE, config.cUSDCContract);
   }
 
   private async getBalanceCToken(
@@ -118,7 +130,6 @@ export class Client {
     ] = await myContract.methods
       .getAccountSnapshot(this.address.getAddress())
       .call();
-    // const decimals = await myContract.methods.decimals().call();
     const decimals = 18;
     const base: Decimal = new Decimal(10);
     let coefficient: Decimal = base.pow(-decimals);
@@ -127,8 +138,6 @@ export class Client {
     const exchangeRateDec: Decimal = coefficient.mul(exchangeRate);
 
     const balanceOfUnderlying = lendBallanceDec.mul(exchangeRateDec);
-    // I can explain 18 but not another 2 zeros
-    // coefficient = base.pow(-20);
 
     // const finalBalance: Decimal = coefficient.mul(balanceOfUnderlying);
     return balanceOfUnderlying.toString();
@@ -149,7 +158,30 @@ export class Client {
 
   /// Mint Tokents ////
   public async mintCDAI(amount: string) {
-    return this.mintCToken(CDAI_JSON_INTERFACE, config.cDAIContract, amount);
+    await this.approveCToken(
+      CTOKEN_JSON_INTERFACE,
+      config.cDAIContract,
+      amount
+    );
+    await this.mintCToken(CTOKEN_JSON_INTERFACE, config.cDAIContract, amount);
+  }
+
+  public async mintCUSDC(amount: string) {
+    await this.approveCToken(
+      CTOKEN_JSON_INTERFACE,
+      config.cUSDCContract,
+      amount
+    );
+    await this.mintCToken(CTOKEN_JSON_INTERFACE, config.cUSDCContract, amount);
+  }
+
+  public async mintCREP(amount: string) {
+    await this.approveCToken(
+      CTOKEN_JSON_INTERFACE,
+      config.cREPContract,
+      amount
+    );
+    await this.mintCToken(CTOKEN_JSON_INTERFACE, config.cREPContract, amount);
   }
 
   private async mintCToken(
@@ -163,7 +195,7 @@ export class Client {
 
     const myContract = new web3.eth.Contract(iface, contract_address);
     const data = myContract.methods.mint(toMintHex).encodeABI();
-    this.executeTX(contract_address, data, "0x0");
+    await this.executeTX(contract_address, data, "0x0");
   }
 
   /// Redeem Tokens ///
@@ -172,7 +204,11 @@ export class Client {
   }
 
   public async redeemCDAI(amount: string) {
-    this.redeemCToken(CDAI_JSON_INTERFACE, config.cDAIContract, amount);
+    this.redeemCToken(CTOKEN_JSON_INTERFACE, config.cDAIContract, amount);
+  }
+
+  public async reddemCUSDC(amount: string) {
+    this.redeemCToken(CTOKEN_JSON_INTERFACE, config.cUSDCContract, amount);
   }
 
   /**
@@ -194,24 +230,53 @@ export class Client {
   }
 
   //// approve market ///////
-  public async approveCDAI() {
-    this.approveCToken(CDAI_JSON_INTERFACE, config.cDAIContract);
+  public async approveCDAI(amount: string) {
+    await this.approveCToken(
+      CTOKEN_JSON_INTERFACE,
+      config.cDAIContract,
+      amount
+    );
   }
 
-  private async approveCToken(iface: AbiItem[], contract_address: string) {
+  public async approveCREP(amount: string) {
+    await this.approveCToken(
+      CTOKEN_JSON_INTERFACE,
+      config.cREPContract,
+      amount
+    );
+  }
+
+  public async approveCUSDC(amount: string) {
+    await this.approveCToken(
+      CTOKEN_JSON_INTERFACE,
+      config.cUSDCContract,
+      amount
+    );
+  }
+
+  private async approveCToken(
+    iface: AbiItem[],
+    contract_address: string,
+    amount: string
+  ) {
     const underlyingAddress = await this.getUnderlyingAddress(
       iface,
       contract_address
     );
+
+    const toApprove = web3.utils.toWei(amount, "ether");
+    const toApproveHex = web3.utils.toHex(toApprove);
+
     // The transaction to approve is sent to the underlying contract
     const UnderlyingContract = new web3.eth.Contract(
       ERC20_INERFACE,
       underlyingAddress
     );
     // Let it controll all your funds
-    const max_val = "0xffffffffffffffffffffffffffffffffffffffff";
+    // const max_val = "0xffffffffffffffffffffffffffffffffffffffff";
+
     const approveCall = UnderlyingContract.methods
-      .approve(contract_address, max_val)
+      .approve(contract_address, toApproveHex)
       .encodeABI();
     await this.executeTX(underlyingAddress, approveCall, "0x0");
   }
@@ -280,7 +345,7 @@ export class Client {
 
     const serializedTx = tx.serialize();
 
-    web3.eth
+    await web3.eth
       .sendSignedTransaction("0x" + serializedTx.toString("hex"))
       .on("transactionHash", (hash: string) => {
         console.log("-".repeat(20));
