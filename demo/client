@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const {Client} = require('../dist/src');
-const {getAPR} = require('../dist/src')
+const {getAPR, getContractAPR} = require('../dist/src')
 
 const program = require('commander');
 
@@ -44,6 +44,14 @@ program
             let balance = await client.getBalanceDAI();
             console.log(balance);
         }
+        if (symbol == "rep") {
+            let balance = await client.getBalanceREP();
+            console.log(balance);
+        }
+        if (symbol == "crep") {
+            let balance = await client.getBalanceCREP();
+            console.log(balance);
+        }
         if (symbol == "usdc") {
             let balance = await client.getBalanceUSDC();
             console.log(balance);
@@ -54,6 +62,14 @@ program
     .command('apr <symbol>')
     .action(async (symbol) => {
         let apr = await getAPR(symbol);
+        apr_num = Number(apr) * 100;
+        console.log (parseFloat(Math.round(apr_num * 100) / 100).toFixed(2) + "%")
+    });
+
+program
+    .command('capr <symbol>')
+    .action(async (symbol) => {
+        let apr = await getContractAPR(symbol);
         apr_num = Number(apr) * 100;
         console.log (parseFloat(Math.round(apr_num * 100) / 100).toFixed(2) + "%")
     });
@@ -106,6 +122,9 @@ program
         }
         if (symbol === "cusdc") {
             client.redeemCUSDC(amount)
+        }
+        if (symbol === "crep") {
+            client.redeemCREP(amount)
         }
     });
 

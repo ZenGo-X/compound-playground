@@ -13,7 +13,7 @@ import Web3 from "web3";
 
 // import interfaces: Should be the same for mainnet/testnet
 import { CETH_JSON_INTERFACE } from "./cEth-interface";
-import { CTOKEN_JSON_INTERFACE } from "./cDAI-interface";
+import { CTOKEN_JSON_INTERFACE } from "./cToken-interface";
 import { COMPTROLLER_INTERFACE } from "./comptroller-interface";
 import { ERC20_INERFACE } from "./erc20-interface";
 import { PRICE_ORACLE_INTERFACE } from "./priceOracle-interface";
@@ -58,6 +58,7 @@ export class Client {
     );
     const data = myContract.methods.enterMarkets(markets_list).encodeABI();
     this.executeTX(config.comptrollerContract, data, "0x0");
+    // this.estimateTX(config.comptrollerContract, data, "0x0");
   }
 
   /////// Getting balance ////////
@@ -79,6 +80,14 @@ export class Client {
     const balance = await this.getBalanceToken(
       CTOKEN_JSON_INTERFACE,
       config.cUSDCContract
+    );
+    return balance;
+  }
+
+  public async getBalanceREP(): Promise<string> {
+    const balance = await this.getBalanceToken(
+      CTOKEN_JSON_INTERFACE,
+      config.cREPContract
     );
     return balance;
   }
@@ -111,6 +120,10 @@ export class Client {
 
   public getBalanceCDAI(): Promise<string> {
     return this.getBalanceCToken(CTOKEN_JSON_INTERFACE, config.cDAIContract);
+  }
+
+  public getBalanceCREP(): Promise<string> {
+    return this.getBalanceCToken(CTOKEN_JSON_INTERFACE, config.cREPContract);
   }
 
   public getBalanceCUSDC(): Promise<string> {
@@ -158,12 +171,17 @@ export class Client {
 
   /// Mint Tokents ////
   public async mintCDAI(amount: string) {
-    await this.approveCToken(
-      CTOKEN_JSON_INTERFACE,
-      config.cDAIContract,
-      amount
-    );
+    // await this.approveCToken(
+    //   CTOKEN_JSON_INTERFACE,
+    //   config.cDAIContract,
+    //   amount
+    // );
     await this.mintCToken(CTOKEN_JSON_INTERFACE, config.cDAIContract, amount);
+    // await this.estimateCToken(
+    //   CTOKEN_JSON_INTERFACE,
+    //   config.cDAIContract,
+    //   amount
+    // );
   }
 
   public async mintCUSDC(amount: string) {
@@ -206,6 +224,14 @@ export class Client {
     );
   }
 
+  public async estimateCREP(amount: string) {
+    await this.estimateCToken(
+      CTOKEN_JSON_INTERFACE,
+      config.cREPContract,
+      amount
+    );
+  }
+
   private async estimateCToken(
     iface: AbiItem[],
     contract_address: string,
@@ -239,6 +265,10 @@ export class Client {
 
   public async redeemCDAI(amount: string) {
     this.redeemCToken(CTOKEN_JSON_INTERFACE, config.cDAIContract, amount);
+  }
+
+  public async redeemCREP(amount: string) {
+    this.redeemCToken(CTOKEN_JSON_INTERFACE, config.cREPContract, amount);
   }
 
   public async reddemCUSDC(amount: string) {
@@ -379,6 +409,8 @@ export class Client {
       value: value
     });
     let gasLimitHex = web3.utils.toHex(gasLimit);
+    console.log("Gas Price: ", gasPrice);
+    console.log("Gas Limit: ", gasLimit);
 
     const txParams = {
       nonce,
