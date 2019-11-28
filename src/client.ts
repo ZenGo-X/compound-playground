@@ -7,8 +7,7 @@ import low from "lowdb";
 import FileSync from "lowdb/adapters/FileSync";
 import { CompAddress } from "./compAddress";
 import { AbiItem } from "web3-utils";
-
-const EthereumTx = require("ethereumjs-tx").Transaction;
+import { Transaction } from "ethereumjs-tx";
 import Web3 from "web3";
 
 // import interfaces: Should be the same for mainnet/testnet
@@ -31,6 +30,10 @@ const web3 = new Web3(
 import { config, markets_list } from "./ropstenConfig";
 
 const CLIENT_DB_PATH = path.join(__dirname, "../../client_db");
+
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 export class Client {
   private mainnet: boolean;
@@ -68,34 +71,12 @@ export class Client {
     return balanceInEth;
   }
 
-  public async getBalanceDAI(): Promise<string> {
-    const balance = await this.getBalanceToken(
-      CTOKEN_JSON_INTERFACE,
-      config.cDAIContract
-    );
-    return balance;
-  }
-
-  public async getBalanceUSDC(): Promise<string> {
-    const balance = await this.getBalanceToken(
-      CTOKEN_JSON_INTERFACE,
-      config.cUSDCContract
-    );
-    return balance;
-  }
-
-  public async getBalanceREP(): Promise<string> {
-    const balance = await this.getBalanceToken(
-      CTOKEN_JSON_INTERFACE,
-      config.cREPContract
-    );
-    return balance;
-  }
-
-  private async getBalanceToken(
-    iface: AbiItem[],
-    contract_address: string
-  ): Promise<string> {
+  private async getBalanceToken(sym: string): Promise<string> {
+    const iface = CTOKEN_JSON_INTERFACE;
+    let contract_address = this.getContractAddress(sym);
+    if (contract_address == "0x0") {
+      console.log("No such symbol");
+    }
     const underlyingAddress = await this.getUnderlyingAddress(
       iface,
       contract_address
@@ -114,26 +95,12 @@ export class Client {
     return actualBalance.toString();
   }
 
-  public getBalanceCETH(): Promise<string> {
-    return this.getBalanceCToken(CETH_JSON_INTERFACE, config.cETHContract);
-  }
-
-  public getBalanceCDAI(): Promise<string> {
-    return this.getBalanceCToken(CTOKEN_JSON_INTERFACE, config.cDAIContract);
-  }
-
-  public getBalanceCREP(): Promise<string> {
-    return this.getBalanceCToken(CTOKEN_JSON_INTERFACE, config.cREPContract);
-  }
-
-  public getBalanceCUSDC(): Promise<string> {
-    return this.getBalanceCToken(CTOKEN_JSON_INTERFACE, config.cUSDCContract);
-  }
-
-  private async getBalanceCToken(
-    iface: AbiItem[],
-    contract_address: string
-  ): Promise<string> {
+  private async getBalanceCToken(sym: string): Promise<string> {
+    const iface = CTOKEN_JSON_INTERFACE;
+    let contract_address = this.getContractAddress(sym);
+    if (contract_address == "0x0") {
+      console.log("No such symbol");
+    }
     const myContract = new web3.eth.Contract(iface, contract_address);
     let [
       error,
@@ -169,74 +136,32 @@ export class Client {
     this.executeTX(config.cETHContract, data, toMintHex);
   }
 
-  /// Mint Tokents ////
-  public async mintCDAI(amount: string) {
-    // await this.approveCToken(
-    //   CTOKEN_JSON_INTERFACE,
-    //   config.cDAIContract,
-    //   amount
-    // );
-    await this.mintCToken(CTOKEN_JSON_INTERFACE, config.cDAIContract, amount);
-    // await this.estimateCToken(
-    //   CTOKEN_JSON_INTERFACE,
-    //   config.cDAIContract,
-    //   amount
-    // );
-  }
-
-  public async mintCUSDC(amount: string) {
-    await this.approveCToken(
-      CTOKEN_JSON_INTERFACE,
-      config.cUSDCContract,
-      amount
-    );
-    await this.mintCToken(CTOKEN_JSON_INTERFACE, config.cUSDCContract, amount);
-  }
-
-  public async mintCREP(amount: string) {
-    await this.approveCToken(
-      CTOKEN_JSON_INTERFACE,
-      config.cREPContract,
-      amount
-    );
-    await this.mintCToken(CTOKEN_JSON_INTERFACE, config.cREPContract, amount);
-  }
-
   private async mintCToken(
-    iface: AbiItem[],
-    contract_address: string,
-    amount: string
+    sym: string,
+    amount: string,
+    nonce?: number,
+    gasLimit?: number
   ) {
+    const iface = CTOKEN_JSON_INTERFACE;
+    let contract_address = this.getContractAddress(sym);
+    if (contract_address == "0x0") {
+      console.log("No such symbol");
+    }
     // TODO: Check the the amount exists in the account
     const toMint = web3.utils.toWei(amount, "ether");
     const toMintHex = web3.utils.toHex(toMint);
 
     const myContract = new web3.eth.Contract(iface, contract_address);
     const data = myContract.methods.mint(toMintHex).encodeABI();
-    await this.executeTX(contract_address, data, "0x0");
+    await this.executeTX(contract_address, data, "0x0", nonce, gasLimit);
   }
 
-  public async estimateCDAI(amount: string) {
-    await this.estimateCToken(
-      CTOKEN_JSON_INTERFACE,
-      config.cDAIContract,
-      amount
-    );
-  }
-
-  public async estimateCREP(amount: string) {
-    await this.estimateCToken(
-      CTOKEN_JSON_INTERFACE,
-      config.cREPContract,
-      amount
-    );
-  }
-
-  private async estimateCToken(
-    iface: AbiItem[],
-    contract_address: string,
-    amount: string
-  ) {
+  private async estimateCToken(sym: string, amount: string) {
+    const iface = CTOKEN_JSON_INTERFACE;
+    let contract_address = this.getContractAddress(sym);
+    if (contract_address == "0x0") {
+      console.log("No such symbol");
+    }
     const toMint = web3.utils.toWei(amount, "ether");
     const toMintHex = web3.utils.toHex(toMint);
 
@@ -258,32 +183,16 @@ export class Client {
     this.estimateTX(config.cETHContract, data, toMintHex);
   }
 
-  /// Redeem Tokens ///
-  public async redeemCETH(amount: string) {
-    this.redeemCToken(CETH_JSON_INTERFACE, config.cETHContract, amount);
-  }
-
-  public async redeemCDAI(amount: string) {
-    this.redeemCToken(CTOKEN_JSON_INTERFACE, config.cDAIContract, amount);
-  }
-
-  public async redeemCREP(amount: string) {
-    this.redeemCToken(CTOKEN_JSON_INTERFACE, config.cREPContract, amount);
-  }
-
-  public async reddemCUSDC(amount: string) {
-    this.redeemCToken(CTOKEN_JSON_INTERFACE, config.cUSDCContract, amount);
-  }
-
   /**
    * Redeem supplied tokens for a cToken contract.
    * cTokens are traded back for regular tokens, according to the exchange rate
    */
-  private async redeemCToken(
-    iface: AbiItem[],
-    contract_address: string,
-    amount: string
-  ) {
+  private async redeemCToken(sym: string, amount: string) {
+    const iface = CTOKEN_JSON_INTERFACE;
+    let contract_address = this.getContractAddress(sym);
+    if (contract_address == "0x0") {
+      console.log("No such symbol");
+    }
     // TODO: Check the the amount exists in the account
     const toRedeem = web3.utils.toWei(amount, "ether");
     const toRedeemHex = web3.utils.toHex(toRedeem);
@@ -294,35 +203,17 @@ export class Client {
   }
 
   //// approve market ///////
-  public async approveCDAI(amount: string) {
-    await this.approveCToken(
-      CTOKEN_JSON_INTERFACE,
-      config.cDAIContract,
-      amount
-    );
-  }
-
-  public async approveCREP(amount: string) {
-    await this.approveCToken(
-      CTOKEN_JSON_INTERFACE,
-      config.cREPContract,
-      amount
-    );
-  }
-
-  public async approveCUSDC(amount: string) {
-    await this.approveCToken(
-      CTOKEN_JSON_INTERFACE,
-      config.cUSDCContract,
-      amount
-    );
-  }
-
   private async approveCToken(
-    iface: AbiItem[],
-    contract_address: string,
-    amount: string
+    sym: string,
+    amount: string,
+    nonce?: number,
+    gasLimit?: number
   ) {
+    const iface = CTOKEN_JSON_INTERFACE;
+    let contract_address = this.getContractAddress(sym);
+    if (contract_address == "0x0") {
+      console.log("No such symbol");
+    }
     const underlyingAddress = await this.getUnderlyingAddress(
       iface,
       contract_address
@@ -342,7 +233,13 @@ export class Client {
     const approveCall = UnderlyingContract.methods
       .approve(contract_address, toApproveHex)
       .encodeABI();
-    await this.executeTX(underlyingAddress, approveCall, "0x0");
+    await this.executeTX(
+      underlyingAddress,
+      approveCall,
+      "0x0",
+      nonce,
+      gasLimit
+    );
   }
 
   /**
@@ -390,25 +287,26 @@ export class Client {
     console.log("Gas Limit: ", gasLimit);
   }
 
-  /**
-   * Execute any web3 transaction with passed parameters
-   */
-  private async executeTX(
+  private async generateTX(
     contract_address: string,
     data: string,
-    value: string
+    value: string,
+    nonce: number,
+    gasLimit?: number
   ) {
-    const nonce = await web3.eth.getTransactionCount(this.address.getAddress());
     let gasPrice = Number(await web3.eth.getGasPrice());
     let gasPriceHex = web3.utils.toHex(gasPrice);
 
-    let gasLimit: number = await web3.eth.estimateGas({
-      from: this.address.getAddress(),
-      to: contract_address,
-      data: data,
-      value: value
-    });
+    if (gasLimit == null) {
+      gasLimit = await web3.eth.estimateGas({
+        from: this.address.getAddress(),
+        to: contract_address,
+        data: data,
+        value: value
+      });
+    }
     let gasLimitHex = web3.utils.toHex(gasLimit);
+
     console.log("Gas Price: ", gasPrice);
     console.log("Gas Limit: ", gasLimit);
 
@@ -420,11 +318,14 @@ export class Client {
       data: data,
       value: value
     };
-    const tx = new EthereumTx(txParams, {
+    const tx = new Transaction(txParams, {
       chain: CHAIN
     });
     console.log(`TX: ${tx}`);
+    return tx;
+  }
 
+  private async signTX(tx: Transaction) {
     console.log("signing tx...");
     // alternatively, we can call `tx.hash()` and sign it using an external signer
     tx.sign(Buffer.from(this.address.getPrivateKey(), "hex"));
@@ -448,6 +349,30 @@ export class Client {
   }
 
   /**
+   * Execute any web3 transaction with passed parameters
+   */
+  private async executeTX(
+    contract_address: string,
+    data: string,
+    value: string,
+    nonce?: number,
+    gasLimit?: number
+  ) {
+    if (nonce == null) {
+      nonce = await web3.eth.getTransactionCount(this.address.getAddress());
+    }
+    console.log("Nonce: ", nonce);
+    let tx = await this.generateTX(
+      contract_address,
+      data,
+      value,
+      nonce,
+      gasLimit
+    );
+    await this.signTX(tx);
+  }
+
+  /**
    * Get the address of the underlying ERC20 contract, related to the
    * cToken. Not relevant for ETH
    */
@@ -464,6 +389,32 @@ export class Client {
 
     underlyingAddress = "0x" + underlyingAddress.substr(-40);
     return underlyingAddress;
+  }
+
+  private getContractAddress(sym: string): string {
+    switch (sym) {
+      case "ceth": {
+        return config.cETHContract;
+        break;
+      }
+      case "cdai": {
+        return config.cDAIContract;
+        break;
+      }
+      case "crep": {
+        return config.cREPContract;
+        break;
+      }
+      case "cwbtc": {
+        return config.cWBTCContract;
+        break;
+      }
+      case "cusdc": {
+        return config.cUSDCContract;
+        break;
+      }
+    }
+    return "0x0";
   }
 }
 

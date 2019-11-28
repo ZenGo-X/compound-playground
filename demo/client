@@ -24,38 +24,15 @@ program
     .command('balance <symbol>')
     .action(async (symbol) => {
         await client.init();
-        if (symbol === "ceth") {
-            let balance = await client.getBalanceCETH();
-            console.log(balance);
+        let balance;
+        if (symbol === 'eth') {
+            balance = await client.getBalanceETH();
+        } else if (symbol.startsWith('c')) {
+            balance = await client.getBalanceCToken(symbol);
+        } else {
+            balance = await client.getBalanceToken("c"+symbol)
         }
-        if (symbol === "cdai") {
-            let balance = await client.getBalanceCDAI();
-            console.log(balance);
-        }
-        if (symbol === "cusdc") {
-            let balance = await client.getBalanceCUSDC();
-            console.log(balance);
-        }
-        if (symbol == "eth") {
-            let balance = await client.getBalanceETH();
-            console.log(balance);
-        }
-        if (symbol == "dai") {
-            let balance = await client.getBalanceDAI();
-            console.log(balance);
-        }
-        if (symbol == "rep") {
-            let balance = await client.getBalanceREP();
-            console.log(balance);
-        }
-        if (symbol == "crep") {
-            let balance = await client.getBalanceCREP();
-            console.log(balance);
-        }
-        if (symbol == "usdc") {
-            let balance = await client.getBalanceUSDC();
-            console.log(balance);
-        }
+        console.log(balance)
     });
 
 program
@@ -80,15 +57,8 @@ program
         await client.init();
         if (symbol === "ceth") {
             client.mintCETH(amount)
-        }
-        if (symbol === "cdai") {
-            client.mintCDAI(amount)
-        }
-        if (symbol === "cusdc") {
-            client.mintCUSDC(amount)
-        }
-        if (symbol === "crep") {
-            client.mintCREP(amount)
+        } else { 
+            mintCToken(symbol, amount)
         }
     });
 
@@ -96,36 +66,14 @@ program
     .command('estimate <symbol> <amount>')
     .action(async (symbol, amount) => {
         await client.init();
-        if (symbol === "ceth") {
-            client.estimateCETH(amount)
-        }
-        if (symbol === "cdai") {
-            client.estimateCDAI(amount)
-        }
-        if (symbol === "cusdc") {
-            client.estimateCUSDC(amount)
-        }
-        if (symbol === "crep") {
-            client.estimateCREP(amount)
-        }
+        await client.estimateCToken(symbol, amount);
     });
 
 program
     .command('redeem <symbol> <amount>')
     .action(async (symbol, amount) => {
         await client.init();
-        if (symbol === "ceth") {
-            client.redeemCETH(amount)
-        }
-        if (symbol === "cdai") {
-            client.redeemCDAI(amount)
-        }
-        if (symbol === "cusdc") {
-            client.redeemCUSDC(amount)
-        }
-        if (symbol === "crep") {
-            client.redeemCREP(amount)
-        }
+        await client.redeemCToken(symbol, amount);
     });
 
 
@@ -133,18 +81,7 @@ program
     .command('approve <symbol> <amount>')
     .action(async (symbol, amount) => {
         await client.init();
-        if (symbol === 'cdai') {
-            console.log("Approve DAI");
-            await client.approveCDAI(amount);
-        }
-        if (symbol === 'cusdc') {
-            console.log("Approve CUSDC");
-            await client.approveCUSDC(amount);
-        }
-        if (symbol === 'crep') {
-            console.log("Approve CREP");
-            await client.approveCREP(amount);
-        }
+        await client.approveCToken(symbol, amount);
     });
 
 program
