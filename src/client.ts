@@ -54,14 +54,27 @@ export class Client {
   }
 
   //// Enter Markets /////
-  public async enterMarkets() {
+  public async enterMarket(sym: string) {
+    const myContract = new web3.eth.Contract(
+      COMPTROLLER_INTERFACE,
+      config.comptrollerContract
+    );
+    let contract_address = this.getContractAddress(sym);
+    if (contract_address == "0x0") {
+      console.log("No such symbol");
+    }
+    const contracts: string[] = [contract_address];
+    const data = myContract.methods.enterMarkets(contracts).encodeABI();
+    this.executeTX(config.comptrollerContract, data, "0x0");
+  }
+
+  public async enterAllMarkets(sym: string) {
     const myContract = new web3.eth.Contract(
       COMPTROLLER_INTERFACE,
       config.comptrollerContract
     );
     const data = myContract.methods.enterMarkets(markets_list).encodeABI();
     this.executeTX(config.comptrollerContract, data, "0x0");
-    // this.estimateTX(config.comptrollerContract, data, "0x0");
   }
 
   /////// Getting balance ////////
@@ -110,6 +123,7 @@ export class Client {
     ] = await myContract.methods
       .getAccountSnapshot(this.address.getAddress())
       .call();
+    // const decimals = 13;
     const decimals = 18;
     const base: Decimal = new Decimal(10);
     let coefficient: Decimal = base.pow(-decimals);
@@ -153,6 +167,26 @@ export class Client {
 
     const myContract = new web3.eth.Contract(iface, contract_address);
     const data = myContract.methods.mint(toMintHex).encodeABI();
+    await this.executeTX(contract_address, data, "0x0", nonce, gasLimit);
+  }
+
+  private async borrowCToken(
+    sym: string,
+    amount: string,
+    nonce?: number,
+    gasLimit?: number
+  ) {
+    const iface = CTOKEN_JSON_INTERFACE;
+    let contract_address = this.getContractAddress(sym);
+    if (contract_address == "0x0") {
+      console.log("No such symbol");
+    }
+    // TODO: Check the the amount exists in the account
+    const toMint = web3.utils.toWei(amount, "ether");
+    const toMintHex = web3.utils.toHex(toMint);
+
+    const myContract = new web3.eth.Contract(iface, contract_address);
+    const data = myContract.methods.borrow(toMintHex).encodeABI();
     await this.executeTX(contract_address, data, "0x0", nonce, gasLimit);
   }
 
@@ -411,6 +445,10 @@ export class Client {
       }
       case "cusdc": {
         return config.cUSDCContract;
+        break;
+      }
+      case "cbat": {
+        return config.cBATContract;
         break;
       }
     }

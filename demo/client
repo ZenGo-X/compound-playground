@@ -58,8 +58,15 @@ program
         if (symbol === "ceth") {
             client.mintCETH(amount)
         } else { 
-            mintCToken(symbol, amount)
+            client.mintCToken(symbol, amount)
         }
+    });
+
+program
+    .command('borrow <symbol> <amount>')
+    .action(async (symbol, amount) => {
+        await client.init();
+        client.borrowCToken(symbol, amount)
     });
 
 program
@@ -85,10 +92,14 @@ program
     });
 
 program
-    .command('enter')
-    .action(async (options) => {
+    .command('enter <symbol>')
+    .action(async (symbol) => {
         await client.init();
-        await client.enterMarkets();
+        if (symbol === "all") {
+            await client.enterAllMarkets();
+        } else {
+            await client.enterMarket(symbol);
+        }
     });
 
 program.parse(process.argv);
