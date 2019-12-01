@@ -84,6 +84,19 @@ export class Client {
     return balanceInEth;
   }
 
+  private async getUnderlyingDecimals(
+    contract_address: string
+  ): Promise<number> {
+    const iface = CTOKEN_JSON_INTERFACE;
+    const underlyingAddress = await this.getUnderlyingAddress(
+      iface,
+      contract_address
+    );
+    const myContract = new web3.eth.Contract(ERC20_INERFACE, underlyingAddress);
+    const decimals = await myContract.methods.decimals().call();
+    return decimals;
+  }
+
   private async getBalanceToken(sym: string): Promise<string> {
     const iface = CTOKEN_JSON_INTERFACE;
     let contract_address = this.getContractAddress(sym);
@@ -123,17 +136,32 @@ export class Client {
     ] = await myContract.methods
       .getAccountSnapshot(this.address.getAddress())
       .call();
-    // const decimals = 13;
-    const decimals = 18;
+    let underlyingDecimals: number = 18;
+    if (sym != "ceth") {
+      underlyingDecimals = await this.getUnderlyingDecimals(contract_address);
+    }
+    let cTokenDecimals: number = await myContract.methods.decimals().call();
+    console.log("Underlying Decimals ", underlyingDecimals);
+    console.log("cToken Decimals ", cTokenDecimals);
     const base: Decimal = new Decimal(10);
-    let coefficient: Decimal = base.pow(-decimals);
 
+    // Balance in underlying token
+    // Get the balance of the underlying token, with the appropriate mantissa
+    let coefficient: Decimal = base.pow(-cTokenDecimals);
     const lendBallanceDec: Decimal = coefficient.mul(lendBallance);
+
+    // Exchange rate mantissa
+    // The mantissa of the exchange rate is calculated as:
+    // 18 + decimals_of_underlying - decimals_of_ctoken
+    let decimals = 18;
+    const decimlasDiff: number = Number(
+      -decimals - Number(underlyingDecimals) + Number(cTokenDecimals)
+    );
+    console.log("Decimals Diff", decimlasDiff);
+    coefficient = base.pow(decimlasDiff);
     const exchangeRateDec: Decimal = coefficient.mul(exchangeRate);
 
     const balanceOfUnderlying = lendBallanceDec.mul(exchangeRateDec);
-
-    // const finalBalance: Decimal = coefficient.mul(balanceOfUnderlying);
     return balanceOfUnderlying.toString();
   }
 
