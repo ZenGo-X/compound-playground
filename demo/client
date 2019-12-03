@@ -63,6 +63,17 @@ program
     });
 
 program
+    .command('appmint <symbol> <amount>')
+    .action(async (symbol, amount) => {
+        await client.init();
+        if (symbol === "ceth") {
+            client.mintCETH(amount)
+        } else { 
+            client.approveAndMintCToken(symbol, amount)
+        }
+    });
+
+program
     .command('borrow <symbol> <amount>')
     .action(async (symbol, amount) => {
         await client.init();

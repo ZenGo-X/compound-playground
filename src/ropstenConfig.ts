@@ -1,5 +1,6 @@
 export const config = {
   cDAIContract: "0x2b536482a01e620ee111747f8334b395a42a555e",
+  cSAIContract: "0x2b536482a01e620ee111747f8334b395a42a555e",
   cETHContract: "0x42a628e0c5f3767930097b34b08dcf77e78e4f2b",
   cUSDCContract: "0x43a1363afb28235720fcbdf0c2dab7759091f7e0",
   cREPContract: "0xa3c2c1618214549281e1b15dee9d682c8aa0dc1c",
@@ -16,7 +17,8 @@ export const markets_list: string[] = [
   config.cREPContract,
   config.cWBTCContract,
   config.cBATContract,
-  config.cDAIContract
+  config.cDAIContract,
+  config.cSAIContract
 ];
 
 export const cTokenAPI = "https://api.compound.finance/api/v2/ctoken";

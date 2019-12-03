@@ -18,6 +18,8 @@ import { ERC20_INERFACE } from "./erc20-interface";
 import { PRICE_ORACLE_INTERFACE } from "./priceOracle-interface";
 
 const CHAIN = "ropsten";
+const APPROVE_COST = 50000;
+const MINT_CONST = 220000;
 
 // TODO: Config based on network type
 const web3 = new Web3(
@@ -35,6 +37,9 @@ function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+/**
+ * Holds the state of the current client, its address and private key
+ */
 export class Client {
   private mainnet: boolean;
   private db: any;
@@ -54,6 +59,11 @@ export class Client {
   }
 
   //// Enter Markets /////
+  /**
+   * Receives a symbol of a market to enter and enters the market
+   * Enter market is required to consider a token as collateral and to
+   * be able to borrow from a market
+   */
   public async enterMarket(sym: string) {
     const myContract = new web3.eth.Contract(
       COMPTROLLER_INTERFACE,
@@ -68,6 +78,9 @@ export class Client {
     this.executeTX(config.comptrollerContract, data, "0x0");
   }
 
+  /**
+   * Eneter all markets at once
+   */
   public async enterAllMarkets(sym: string) {
     const myContract = new web3.eth.Contract(
       COMPTROLLER_INTERFACE,
@@ -78,12 +91,18 @@ export class Client {
   }
 
   /////// Getting balance ////////
+  /**
+   * Get th
+   */
   public async getBalanceETH(): Promise<string> {
     const balance = await web3.eth.getBalance(this.address.getAddress());
     const balanceInEth = web3.utils.fromWei(balance, "ether");
     return balanceInEth;
   }
 
+  /**
+   * Get the mantissa the underlying token is working with for conversion calculations
+   */
   private async getUnderlyingDecimals(
     contractAddress: string
   ): Promise<number> {
@@ -100,6 +119,11 @@ export class Client {
     return decimals;
   }
 
+  /**
+   * Get the balance of an underlying cToken directly from the ERC20 contract
+   * Receives the cToken symbol
+   * Returns the balance of the underlying token
+   */
   private async getBalanceToken(sym: string): Promise<string> {
     const iface = CTOKEN_JSON_INTERFACE;
     let contractAddress = this.getContractAddress(sym);
@@ -124,6 +148,12 @@ export class Client {
     return actualBalance.toString();
   }
 
+  /**
+   * Get the balance of a cToken
+   * Receives a symbol of a cToken
+   * Returns the balance currently supplied to the cToken contract, in unites of
+   * the underlying cToken, i.e. multiplied by the exchange rate
+   */
   private async getBalanceCToken(sym: string): Promise<string> {
     const iface = CTOKEN_JSON_INTERFACE;
     let contractAddress = this.getContractAddress(sym);
@@ -164,7 +194,12 @@ export class Client {
     return balanceOfUnderlying.toString();
   }
 
-  // Minting Ceth is different as there is not erc20 token
+  /// Minting (supplying) (lending)
+  /**
+   * Sends the specified amount of Ether to the cEth contract, and receive
+   * cEth tokens in return
+   * Mining cEth is different to other tokens, as an amount is required.
+   */
   public async mintCETH(amount: string) {
     const myContract = new web3.eth.Contract(
       CETH_JSON_INTERFACE,
@@ -177,7 +212,13 @@ export class Client {
     this.executeTX(config.cETHContract, data, toMintHex);
   }
 
-  private async mintCToken(
+  /**
+   * Sends the specified amount of the underlying token to the cToken contract,
+   * and receive cTokens in return
+   * Minting can fail if there are insufficient funds in the underlying ERC20
+   * contract, or if funds have not been approved for moving
+   */
+  public async mintCToken(
     sym: string,
     amount: string,
     nonce?: number,
@@ -188,7 +229,7 @@ export class Client {
     if (contractAddress == "0x0") {
       console.log("No such symbol");
     }
-    // TODO: Check the the amount exists in the account
+    // TODO: Check the amount exists in the account
     const toMintHex = await this.convertToUnderlying(amount, contractAddress);
 
     const myContract = new web3.eth.Contract(iface, contractAddress);
@@ -196,55 +237,12 @@ export class Client {
     await this.executeTX(contractAddress, data, "0x0", nonce, gasLimit);
   }
 
-  private async borrowCToken(
-    sym: string,
-    amount: string,
-    nonce?: number,
-    gasLimit?: number
-  ) {
-    const iface = CTOKEN_JSON_INTERFACE;
-    let contractAddress = this.getContractAddress(sym);
-    if (contractAddress == "0x0") {
-      console.log("No such symbol");
-    }
-    // TODO: Check the the amount exists in the account
-    const toBorrowHex = await this.convertToUnderlying(amount, contractAddress);
-
-    const myContract = new web3.eth.Contract(iface, contractAddress);
-    const data = myContract.methods.borrow(toBorrowHex).encodeABI();
-    await this.executeTX(contractAddress, data, "0x0", nonce, gasLimit);
-  }
-
+  //// approve ///////
   /**
-   * Redeem supplied tokens for a cToken contract.
-   * cTokens are traded back for regular tokens, according to the exchange rate
+   * Before ERC20 tokens can be pulled from and account, the amount must
+   * be approved.
+   * Receives: a symbol and the amount of underlying tokens to approve
    */
-  private async redeemCToken(sym: string, amount: string) {
-    const iface = CTOKEN_JSON_INTERFACE;
-    let contractAddress = this.getContractAddress(sym);
-    if (contractAddress == "0x0") {
-      console.log("No such symbol");
-    }
-    const toRedeemHex = await this.convertToUnderlying(amount, contractAddress);
-
-    const myContract = new web3.eth.Contract(iface, contractAddress);
-    const data = myContract.methods.redeemUnderlying(toRedeemHex).encodeABI();
-    this.executeTX(contractAddress, data, "0x0");
-  }
-
-  private async convertToUnderlying(
-    amount: string,
-    contractAddress: string
-  ): Promise<string> {
-    const base: Decimal = new Decimal(10);
-    let underlyingDecimals = await this.getUnderlyingDecimals(contractAddress);
-    let coefficient: Decimal = base.pow(underlyingDecimals);
-    const decimal: Decimal = coefficient.mul(Number(amount));
-    const hex = decimal.toHex();
-    return hex;
-  }
-
-  //// approve market ///////
   private async approveCToken(
     sym: string,
     amount: string,
@@ -284,6 +282,61 @@ export class Client {
       nonce,
       gasLimit
     );
+  }
+
+  /**
+   * Performs both approve and mint asynchronously, both transactions are sent
+   * where mint has nonce + 1.
+   * The gas price is an over estimation of the actual cost, and might need
+   * to be updated
+   */
+  public async approveAndMintCToken(sym: string, amount: string) {
+    const nonce = await web3.eth.getTransactionCount(this.address.getAddress());
+    this.approveCToken(sym, amount, nonce, APPROVE_COST);
+    this.mintCToken(sym, amount, nonce + 1, MINT_CONST);
+  }
+
+  /**
+   * Redeem supplied tokens for a cToken contract.
+   * cTokens are traded back for regular tokens, according to the exchange rate
+   */
+  private async redeemCToken(sym: string, amount: string) {
+    const iface = CTOKEN_JSON_INTERFACE;
+    let contractAddress = this.getContractAddress(sym);
+    if (contractAddress == "0x0") {
+      console.log("No such symbol");
+    }
+    const toRedeemHex = await this.convertToUnderlying(amount, contractAddress);
+
+    const myContract = new web3.eth.Contract(iface, contractAddress);
+    // TODO: Replace with redeem and do the calculation yourself
+    const data = myContract.methods.redeemUnderlying(toRedeemHex).encodeABI();
+    this.executeTX(contractAddress, data, "0x0");
+  }
+
+  //// Borrowing ///////
+  /**
+   * Borrow the specified amount of underlying tokens.
+   * Borrowing requires to "enter" at least one market where you have collateral
+   * and the market you want to borrow from
+   */
+  private async borrowCToken(
+    sym: string,
+    amount: string,
+    nonce?: number,
+    gasLimit?: number
+  ) {
+    const iface = CTOKEN_JSON_INTERFACE;
+    let contractAddress = this.getContractAddress(sym);
+    if (contractAddress == "0x0") {
+      console.log("No such symbol");
+    }
+    // TODO: Check the amount exists in the account
+    const toBorrowHex = await this.convertToUnderlying(amount, contractAddress);
+
+    const myContract = new web3.eth.Contract(iface, contractAddress);
+    const data = myContract.methods.borrow(toBorrowHex).encodeABI();
+    await this.executeTX(contractAddress, data, "0x0", nonce, gasLimit);
   }
 
   /**
@@ -435,6 +488,29 @@ export class Client {
     return underlyingAddress;
   }
 
+  /**
+   * Converts a number in human readable format to the correct hexadecimal
+   * value required by the underlying ERC20 token.
+   * Notice this receives the cToken address, and polls for decimals of the
+   * underlying contract
+   * TODO: This can be optimized with a simple mapping
+   */
+  private async convertToUnderlying(
+    amount: string,
+    contractAddress: string
+  ): Promise<string> {
+    const base: Decimal = new Decimal(10);
+    let underlyingDecimals = await this.getUnderlyingDecimals(contractAddress);
+    let coefficient: Decimal = base.pow(underlyingDecimals);
+    const decimal: Decimal = coefficient.mul(Number(amount));
+    const hex = decimal.toHex();
+    return hex;
+  }
+
+  /**
+   * Return the cToken contract address of the given symbol
+   * 0x0 if no symbol
+   */
   private getContractAddress(sym: string): string {
     switch (sym) {
       case "ceth": {
@@ -443,6 +519,10 @@ export class Client {
       }
       case "cdai": {
         return config.cDAIContract;
+        break;
+      }
+      case "csai": {
+        return config.cSAIContract;
         break;
       }
       case "crep": {
