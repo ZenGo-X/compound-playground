@@ -119,6 +119,14 @@ program
     });
 
 program
+    .command('accrued <symbol>')
+    .action(async (symbol) => {
+        await client.init();
+        let accrued = await client.accruedInterest(symbol);
+        console.log(accrued)
+    });
+
+program
     .command('exit <symbol>')
     .action(async (symbol) => {
         await client.init();

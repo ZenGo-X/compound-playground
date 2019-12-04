@@ -28,14 +28,29 @@ import { COMPTROLLER_INTERFACE } from "./comptroller-interface";
 import { ERC20_INERFACE } from "./erc20-interface";
 import { PRICE_ORACLE_INTERFACE } from "./priceOracle-interface";
 
+interface KeyValue {
+  value: string;
+}
+
+interface CTokenInfo {
+  name: string;
+  symbol: string;
+  supply_rate: KeyValue;
+}
+
+interface cTokensResponse {
+  cToken: CTokenInfo[];
+}
+
 export async function getAPR(token: string): Promise<string> {
   const response = await fetch(cTokenAPI);
-  const json = await response.json(); //extract JSON from the http response
-  const cTokens: Object = eval(json)["cToken"];
-  for (const [index, cToken] of Object.entries(cTokens)) {
-    const sym: string = cToken["symbol"];
+  const json: cTokensResponse = await response.json(); //extract JSON from the http response
+  const cTokens = json.cToken;
+  console.log(cTokens);
+  for (const cToken of cTokens) {
+    const sym: string = cToken.symbol;
     if (sym.toLowerCase() === token) {
-      return cToken["supply_rate"]["value"];
+      return cToken.supply_rate.value;
     }
   }
   return "Unknown token";

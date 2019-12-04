@@ -22,6 +22,8 @@ const CHAIN = "ropsten";
 const APPROVE_COST = 50000;
 const MINT_CONST = 220000;
 
+const fetch = require("node-fetch");
+
 // TODO: Config based on network type
 const web3 = new Web3(
   new Web3.providers.HttpProvider(
@@ -30,8 +32,8 @@ const web3 = new Web3(
 );
 
 // TODO add logic to configure by network
-import { config, markets_list } from "./ropstenConfig";
-// import { config, markets_list } from "./mainnetConfig";
+// import { config, markets_list, addressAPI } from "./ropstenConfig";
+import { config, markets_list, addressAPI } from "./mainnetConfig";
 
 const CLIENT_DB_PATH = path.join(__dirname, "../../client_db");
 
@@ -71,7 +73,7 @@ export class Client {
       COMPTROLLER_INTERFACE,
       config.comptrollerContract
     );
-    let contractAddress = this.getContractAddress(sym);
+    let contractAddress = symbolToAddress(sym);
     if (contractAddress == "0x0") {
       console.log("No such symbol");
     }
@@ -85,7 +87,7 @@ export class Client {
       COMPTROLLER_INTERFACE,
       config.comptrollerContract
     );
-    let contractAddress = this.getContractAddress(sym);
+    let contractAddress = symbolToAddress(sym);
     if (contractAddress == "0x0") {
       console.log("No such symbol");
     }
@@ -142,7 +144,7 @@ export class Client {
    */
   private async getBalanceToken(sym: string): Promise<string> {
     const iface = CTOKEN_JSON_INTERFACE;
-    let contractAddress = this.getContractAddress(sym);
+    let contractAddress = symbolToAddress(sym);
     if (contractAddress == "0x0") {
       console.log("No such symbol");
     }
@@ -172,7 +174,7 @@ export class Client {
    */
   private async getBalanceCToken(sym: string): Promise<string> {
     const iface = CTOKEN_JSON_INTERFACE;
-    let contractAddress = this.getContractAddress(sym);
+    let contractAddress = symbolToAddress(sym);
     if (contractAddress == "0x0") {
       console.log("No such symbol");
     }
@@ -241,7 +243,7 @@ export class Client {
     gasLimit?: number
   ) {
     const iface = CTOKEN_JSON_INTERFACE;
-    let contractAddress = this.getContractAddress(sym);
+    let contractAddress = symbolToAddress(sym);
     if (contractAddress == "0x0") {
       console.log("No such symbol");
     }
@@ -266,7 +268,7 @@ export class Client {
     gasLimit?: number
   ) {
     const iface = CTOKEN_JSON_INTERFACE;
-    let contractAddress = this.getContractAddress(sym);
+    let contractAddress = symbolToAddress(sym);
     if (contractAddress == "0x0") {
       console.log("No such symbol");
     }
@@ -315,6 +317,8 @@ export class Client {
   /**
    * Redeem supplied tokens for a cToken contract.
    * cTokens are traded back for regular tokens, according to the exchange rate
+   * If redeem All flag is passed, all the cTokens are redeemed without converting
+   * to underlying tokens
    */
   private async redeemCToken(
     sym: string,
@@ -322,14 +326,14 @@ export class Client {
     redeemAll: boolean = false
   ) {
     const iface = CTOKEN_JSON_INTERFACE;
-    let contractAddress = this.getContractAddress(sym);
+    let contractAddress = symbolToAddress(sym);
     if (contractAddress == "0x0") {
       console.log("No such symbol");
     }
     // If we want to redeem all, need to specify amount in cTokens
     if (redeemAll == true) {
       const iface = CTOKEN_JSON_INTERFACE;
-      let contractAddress = this.getContractAddress(sym);
+      let contractAddress = symbolToAddress(sym);
       if (contractAddress == "0x0") {
         console.log("No such symbol");
       }
@@ -369,7 +373,7 @@ export class Client {
     gasLimit?: number
   ) {
     const iface = CTOKEN_JSON_INTERFACE;
-    let contractAddress = this.getContractAddress(sym);
+    let contractAddress = symbolToAddress(sym);
     if (contractAddress == "0x0") {
       console.log("No such symbol");
     }
@@ -549,47 +553,40 @@ export class Client {
     return hex;
   }
 
-  /**
-   * Return the cToken contract address of the given symbol
-   * 0x0 if no symbol
-   */
-  private getContractAddress(sym: string): string {
-    switch (sym) {
-      case "cbat": {
-        return config.cBATContract;
-        break;
-      }
-      case "cdai": {
-        return config.cDAIContract;
-        break;
-      }
-      case "ceth": {
-        return config.cETHContract;
-        break;
-      }
-      case "crep": {
-        return config.cREPContract;
-        break;
-      }
-      case "csai": {
-        return config.cSAIContract;
-        break;
-      }
-      case "cusdc": {
-        return config.cUSDCContract;
-        break;
-      }
-      case "cwbtc": {
-        return config.cWBTCContract;
-        break;
-      }
-      case "czrx": {
-        return config.cZRXContract;
-        break;
+  // Returns the accrued supply interest in units of the underlying token
+  public async accruedInterest(sym: string): Promise<string> {
+    const apiCall = addressAPI + this.address.getAddress();
+    const response = await fetch(apiCall);
+    const json: addressResponse = await response.json();
+    // Without errors, there should only be one returned accout
+    const tokens: TokenInfo[] = json.accounts[0].tokens;
+    for (const token of tokens) {
+      const isym = addressToSymbol(token.address);
+      if (isym === sym) {
+        return token.lifetime_supply_interest_accrued.value;
       }
     }
-    return "0x0";
+    return "No such token for address";
   }
+}
+
+interface addressResponse {
+  accounts: addressInfo[];
+}
+
+interface addressInfo {
+  address: string;
+  health: KeyValue;
+  tokens: TokenInfo[];
+}
+
+interface TokenInfo {
+  address: string;
+  lifetime_supply_interest_accrued: KeyValue;
+}
+
+interface KeyValue {
+  value: string;
 }
 
 function ensureDirSync(dirpath: string) {
@@ -598,4 +595,87 @@ function ensureDirSync(dirpath: string) {
   } catch (err) {
     if (err.code !== "EEXIST") throw err;
   }
+}
+
+/**
+ * Return the cToken contract address of the given symbol
+ * 0x0 if no symbol
+ */
+function symbolToAddress(sym: string): string {
+  switch (sym) {
+    case "cbat": {
+      return config.cBATContract;
+      break;
+    }
+    case "cdai": {
+      return config.cDAIContract;
+      break;
+    }
+    case "ceth": {
+      return config.cETHContract;
+      break;
+    }
+    case "crep": {
+      return config.cREPContract;
+      break;
+    }
+    case "csai": {
+      return config.cSAIContract;
+      break;
+    }
+    case "cusdc": {
+      return config.cUSDCContract;
+      break;
+    }
+    case "cwbtc": {
+      return config.cWBTCContract;
+      break;
+    }
+    case "czrx": {
+      return config.cZRXContract;
+      break;
+    }
+  }
+  return "0x0";
+}
+
+/**
+ * Covert address to symbol
+ */
+function addressToSymbol(address: string): string {
+  switch (address) {
+    case config.cBATContract: {
+      return "cbat";
+      break;
+    }
+    case config.cDAIContract: {
+      return "cdai";
+      break;
+    }
+    case config.cETHContract: {
+      return "ceth";
+      break;
+    }
+    case config.cREPContract: {
+      return "crep";
+      break;
+    }
+    case config.cSAIContract: {
+      return "csai";
+      break;
+    }
+    case config.cUSDCContract: {
+      return "cusdc";
+      break;
+    }
+    case config.cWBTCContract: {
+      return "cwbtc";
+      break;
+    }
+    case config.cZRXContract: {
+      return "czrx";
+      break;
+    }
+  }
+  return "0x0";
 }

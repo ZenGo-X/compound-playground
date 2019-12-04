@@ -24,3 +24,5 @@ export const markets_list: string[] = [
 ];
 
 export const cTokenAPI = "https://api.compound.finance/api/v2/ctoken";
+export const addressAPI =
+  "https://api.compound.finance/api/v2/account?addresses[]=";
