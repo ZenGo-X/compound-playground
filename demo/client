@@ -91,7 +91,12 @@ program
     .command('redeem <symbol> <amount>')
     .action(async (symbol, amount) => {
         await client.init();
-        await client.redeemCToken(symbol, amount);
+        if (amount == 'all') {
+            await client.redeemCToken(symbol, 0, true);
+        } else {
+            await client.redeemCToken(symbol, amount, false);
+        }
+
     });
 
 
@@ -111,6 +116,13 @@ program
         } else {
             await client.enterMarket(symbol);
         }
+    });
+
+program
+    .command('exit <symbol>')
+    .action(async (symbol) => {
+        await client.init();
+        await client.exitMarket(symbol);
     });
 
 program.parse(process.argv);

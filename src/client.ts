@@ -17,6 +17,7 @@ import { COMPTROLLER_INTERFACE } from "./comptroller-interface";
 import { ERC20_INERFACE } from "./erc20-interface";
 import { PRICE_ORACLE_INTERFACE } from "./priceOracle-interface";
 
+//const CHAIN = "mainnet";
 const CHAIN = "ropsten";
 const APPROVE_COST = 50000;
 const MINT_CONST = 220000;
@@ -30,6 +31,7 @@ const web3 = new Web3(
 
 // TODO add logic to configure by network
 import { config, markets_list } from "./ropstenConfig";
+// import { config, markets_list } from "./mainnetConfig";
 
 const CLIENT_DB_PATH = path.join(__dirname, "../../client_db");
 
@@ -75,6 +77,20 @@ export class Client {
     }
     const contracts: string[] = [contractAddress];
     const data = myContract.methods.enterMarkets(contracts).encodeABI();
+    this.executeTX(config.comptrollerContract, data, "0x0");
+  }
+
+  public async exitMarket(sym: string) {
+    const myContract = new web3.eth.Contract(
+      COMPTROLLER_INTERFACE,
+      config.comptrollerContract
+    );
+    let contractAddress = this.getContractAddress(sym);
+    if (contractAddress == "0x0") {
+      console.log("No such symbol");
+    }
+    const contracts: string[] = [contractAddress];
+    const data = myContract.methods.exitMarket(contracts).encodeABI();
     this.executeTX(config.comptrollerContract, data, "0x0");
   }
 
@@ -178,7 +194,7 @@ export class Client {
     // Balance in underlying token
     // Get the balance of the underlying token, with the appropriate mantissa
     let coefficient: Decimal = base.pow(-cTokenDecimals);
-    const lendBallanceDec: Decimal = coefficient.mul(lendBallance);
+    const ballanceDec: Decimal = coefficient.mul(lendBallance);
 
     // Exchange rate mantissa
     // The mantissa of the exchange rate is calculated as:
@@ -190,7 +206,7 @@ export class Client {
     coefficient = base.pow(decimlasDiff);
     const exchangeRateDec: Decimal = coefficient.mul(exchangeRate);
 
-    const balanceOfUnderlying = lendBallanceDec.mul(exchangeRateDec);
+    const balanceOfUnderlying = ballanceDec.mul(exchangeRateDec);
     return balanceOfUnderlying.toString();
   }
 
@@ -300,18 +316,44 @@ export class Client {
    * Redeem supplied tokens for a cToken contract.
    * cTokens are traded back for regular tokens, according to the exchange rate
    */
-  private async redeemCToken(sym: string, amount: string) {
+  private async redeemCToken(
+    sym: string,
+    amount: string,
+    redeemAll: boolean = false
+  ) {
     const iface = CTOKEN_JSON_INTERFACE;
     let contractAddress = this.getContractAddress(sym);
     if (contractAddress == "0x0") {
       console.log("No such symbol");
     }
-    const toRedeemHex = await this.convertToUnderlying(amount, contractAddress);
-
-    const myContract = new web3.eth.Contract(iface, contractAddress);
-    // TODO: Replace with redeem and do the calculation yourself
-    const data = myContract.methods.redeemUnderlying(toRedeemHex).encodeABI();
-    this.executeTX(contractAddress, data, "0x0");
+    // If we want to redeem all, need to specify amount in cTokens
+    if (redeemAll == true) {
+      const iface = CTOKEN_JSON_INTERFACE;
+      let contractAddress = this.getContractAddress(sym);
+      if (contractAddress == "0x0") {
+        console.log("No such symbol");
+      }
+      const myContract = new web3.eth.Contract(iface, contractAddress);
+      let [
+        error,
+        lendBallance,
+        borrowBalance,
+        exchangeRate
+      ] = await myContract.methods
+        .getAccountSnapshot(this.address.getAddress())
+        .call();
+      const data = myContract.methods.redeem(lendBallance).encodeABI();
+      this.executeTX(contractAddress, data, "0x0");
+    } else {
+      const toRedeemHex = await this.convertToUnderlying(
+        amount,
+        contractAddress
+      );
+      const myContract = new web3.eth.Contract(iface, contractAddress);
+      // TODO: Replace with redeem and do the calculation yourself
+      const data = myContract.methods.redeemUnderlying(toRedeemHex).encodeABI();
+      this.executeTX(contractAddress, data, "0x0");
+    }
   }
 
   //// Borrowing ///////
@@ -513,32 +555,36 @@ export class Client {
    */
   private getContractAddress(sym: string): string {
     switch (sym) {
-      case "ceth": {
-        return config.cETHContract;
+      case "cbat": {
+        return config.cBATContract;
         break;
       }
       case "cdai": {
         return config.cDAIContract;
         break;
       }
-      case "csai": {
-        return config.cSAIContract;
+      case "ceth": {
+        return config.cETHContract;
         break;
       }
       case "crep": {
         return config.cREPContract;
         break;
       }
-      case "cwbtc": {
-        return config.cWBTCContract;
+      case "csai": {
+        return config.cSAIContract;
         break;
       }
       case "cusdc": {
         return config.cUSDCContract;
         break;
       }
-      case "cbat": {
-        return config.cBATContract;
+      case "cwbtc": {
+        return config.cWBTCContract;
+        break;
+      }
+      case "czrx": {
+        return config.cZRXContract;
         break;
       }
     }
