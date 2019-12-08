@@ -1,0 +1,22 @@
+#!/usr/bin/env node
+
+const { Liquidator} = require('../dist/src')
+
+const program = require('commander');
+
+const liquidator = new Liquidator();
+
+program
+    .command('check <address>')
+    .action(async (address) => {
+        liquidator.checkLiquidity(address);
+    });
+
+program
+    .command('assets <address>')
+    .action(async (address) => {
+        liquidator.getAssets(address);
+    });
+
+
+program.parse(process.argv);

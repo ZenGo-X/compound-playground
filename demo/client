@@ -62,6 +62,14 @@ program
         }
     });
 
+
+program
+    .command('liquidate <account> <bsym> <amount> <csym>')
+    .action(async (account, bsym, amount, csym) => {
+        await client.init();
+        client.liquidate(account, bsym, amount, csym)
+    });
+
 program
     .command('appmint <symbol> <amount>')
     .action(async (symbol, amount) => {

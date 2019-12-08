@@ -32,8 +32,8 @@ const web3 = new Web3(
 );
 
 // TODO add logic to configure by network
-// import { config, markets_list, addressAPI } from "./ropstenConfig";
-import { config, markets_list, addressAPI } from "./mainnetConfig";
+import { config, markets_list, addressAPI } from "./ropstenConfig";
+// import { config, markets_list, addressAPI } from "./mainnetConfig";
 
 const CLIENT_DB_PATH = path.join(__dirname, "../../client_db");
 
@@ -567,6 +567,40 @@ export class Client {
       }
     }
     return "No such token for address";
+  }
+
+  public async liquidate(
+    account: string,
+    borrowedSym: string,
+    amount: string, // should be in underlying already
+    collateralSym: string
+  ) {
+    const iface = CTOKEN_JSON_INTERFACE;
+    let collateralAddress = symbolToAddress(collateralSym);
+    if (collateralAddress == "0x0") {
+      console.log("No such symbol");
+    }
+
+    let borrowedAddress = symbolToAddress(borrowedSym);
+    if (borrowedAddress == "0x0") {
+      console.log("No such symbol");
+    }
+    // TODO: The repaid token needs to first be approved
+
+    const base: Decimal = new Decimal(10);
+    const decimals = 18;
+    let coefficient: Decimal = base.pow(decimals);
+    const decimal = coefficient.mul(Number(amount)).toString();
+    // const hexAmount = decimal.toHex();
+
+    const myContract = new web3.eth.Contract(iface, borrowedAddress);
+    console.log(1000000000000000000);
+    console.log(decimal);
+    const data = myContract.methods
+      .liquidateBorrow(account, decimal, collateralAddress)
+      .encodeABI();
+
+    await this.executeTX(borrowedAddress, data, "0x0");
   }
 }
 
