@@ -6,8 +6,10 @@ import path from "path";
 import low from "lowdb";
 import FileSync from "lowdb/adapters/FileSync";
 import { CompAddress } from "./compAddress";
+import { GasEstimator } from "./gasEstimator";
 import { AbiItem } from "web3-utils";
 import { Transaction } from "ethereumjs-tx";
+import { TransactionReceipt } from "web3-core";
 import Web3 from "web3";
 
 // import interfaces: Should be the same for mainnet/testnet
@@ -32,8 +34,8 @@ const web3 = new Web3(
 );
 
 // TODO add logic to configure by network
+// import { config, markets_list, addressAPI } from "./ropstenConfig";
 import { config, markets_list, addressAPI } from "./ropstenConfig";
-// import { config, markets_list, addressAPI } from "./mainnetConfig";
 
 const CLIENT_DB_PATH = path.join(__dirname, "../../client_db");
 
@@ -41,20 +43,25 @@ function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function getGasLimit(method: string) {}
+
 /**
  * Holds the state of the current client, its address and private key
  */
 export class Client {
   private mainnet: boolean;
   private db: any;
+  private gasEstimator: GasEstimator;
   private address: CompAddress;
 
   constructor(mainnet: boolean = false, useAsyncBroadcast: boolean = false) {
     this.mainnet = mainnet;
+    this.gasEstimator = new GasEstimator();
   }
 
-  public async init() {
-    this.initDb();
+  public async init(path: string = `${CLIENT_DB_PATH}/db.json`) {
+    this.initDb(path);
+    this.gasEstimator.loadData();
     this.address = await this.restoreOrGenerate();
   }
 
@@ -79,7 +86,7 @@ export class Client {
     }
     const contracts: string[] = [contractAddress];
     const data = myContract.methods.enterMarkets(contracts).encodeABI();
-    this.executeTX(config.comptrollerContract, data, "0x0");
+    this.executeTX(config.comptrollerContract, data, "0x0", "enterMarket");
   }
 
   public async exitMarket(sym: string) {
@@ -93,7 +100,7 @@ export class Client {
     }
     const contracts: string[] = [contractAddress];
     const data = myContract.methods.exitMarket(contracts).encodeABI();
-    this.executeTX(config.comptrollerContract, data, "0x0");
+    this.executeTX(config.comptrollerContract, data, "0x0", "exitMarkets");
   }
 
   /**
@@ -105,7 +112,7 @@ export class Client {
       config.comptrollerContract
     );
     const data = myContract.methods.enterMarkets(markets_list).encodeABI();
-    this.executeTX(config.comptrollerContract, data, "0x0");
+    this.executeTX(config.comptrollerContract, data, "0x0", "enterAllMarkets");
   }
 
   /////// Getting balance ////////
@@ -227,7 +234,7 @@ export class Client {
     const nonce = await web3.eth.getTransactionCount(this.address.getAddress());
     const toMint = web3.utils.toWei(amount, "ether");
     const toMintHex = web3.utils.toHex(toMint);
-    this.executeTX(config.cETHContract, data, toMintHex);
+    this.executeTX(config.cETHContract, data, toMintHex, "mintcETH");
   }
 
   /**
@@ -252,7 +259,14 @@ export class Client {
 
     const myContract = new web3.eth.Contract(iface, contractAddress);
     const data = myContract.methods.mint(toMintHex).encodeABI();
-    await this.executeTX(contractAddress, data, "0x0", nonce, gasLimit);
+    await this.executeTX(
+      contractAddress,
+      data,
+      "0x0",
+      "mintCToken",
+      nonce,
+      gasLimit
+    );
   }
 
   //// approve ///////
@@ -281,6 +295,9 @@ export class Client {
       contractAddress
     );
 
+    let loadedGasLimit = await this.gasEstimator.getLimit("approve");
+    console.log("Loaded", loadedGasLimit);
+
     // The transaction to approve is sent to the underlying contract
     const underlyingContract = new web3.eth.Contract(
       ERC20_INERFACE,
@@ -297,6 +314,7 @@ export class Client {
       underlyingAddress,
       approveCall,
       "0x0",
+      "approve",
       nonce,
       gasLimit
     );
@@ -347,7 +365,7 @@ export class Client {
         .getAccountSnapshot(this.address.getAddress())
         .call();
       const data = myContract.methods.redeem(lendBallance).encodeABI();
-      this.executeTX(contractAddress, data, "0x0");
+      this.executeTX(contractAddress, data, "0x0", "redeemCToken");
     } else {
       const toRedeemHex = await this.convertToUnderlying(
         amount,
@@ -356,7 +374,7 @@ export class Client {
       const myContract = new web3.eth.Contract(iface, contractAddress);
       // TODO: Replace with redeem and do the calculation yourself
       const data = myContract.methods.redeemUnderlying(toRedeemHex).encodeABI();
-      this.executeTX(contractAddress, data, "0x0");
+      this.executeTX(contractAddress, data, "0x0", "redeemCToken");
     }
   }
 
@@ -382,7 +400,14 @@ export class Client {
 
     const myContract = new web3.eth.Contract(iface, contractAddress);
     const data = myContract.methods.borrow(toBorrowHex).encodeABI();
-    await this.executeTX(contractAddress, data, "0x0", nonce, gasLimit);
+    await this.executeTX(
+      contractAddress,
+      data,
+      "0x0",
+      "borrow",
+      nonce,
+      gasLimit
+    );
   }
 
   /**
@@ -403,9 +428,9 @@ export class Client {
     return addr;
   }
 
-  private initDb() {
+  private initDb(path: string) {
     ensureDirSync(CLIENT_DB_PATH);
-    const adapter = new FileSync(`${CLIENT_DB_PATH}/db.json`);
+    const adapter = new FileSync(path);
     this.db = low(adapter);
     this.db.defaults().write();
   }
@@ -468,20 +493,23 @@ export class Client {
     return tx;
   }
 
-  private async signTX(tx: Transaction) {
+  private async signTX(tx: Transaction): Promise<Buffer> {
     console.log("signing tx...");
     // alternatively, we can call `tx.hash()` and sign it using an external signer
     tx.sign(Buffer.from(this.address.getPrivateKey(), "hex"));
 
     const serializedTx = tx.serialize();
+    return tx.serialize();
+  }
 
-    await web3.eth
+  private async broadcastTX(serializedTx: Buffer): Promise<TransactionReceipt> {
+    let receipt = await web3.eth
       .sendSignedTransaction("0x" + serializedTx.toString("hex"))
       .on("transactionHash", (hash: string) => {
         console.log("-".repeat(20));
         console.log("on(transactionHash): hash =", hash);
       })
-      .on("receipt", (receipt: any) => {
+      .on("receipt", (receipt: TransactionReceipt) => {
         console.log("-".repeat(20));
         console.log("on(receipt): receipt =", receipt);
       })
@@ -489,6 +517,7 @@ export class Client {
         console.log("-".repeat(20));
         console.log("on(error): error =", error);
       });
+    return receipt;
   }
 
   /**
@@ -498,6 +527,7 @@ export class Client {
     contractAddress: string,
     data: string,
     value: string,
+    methodName: string,
     nonce?: number,
     gasLimit?: number
   ) {
@@ -512,7 +542,14 @@ export class Client {
       nonce,
       gasLimit
     );
-    await this.signTX(tx);
+    let serializedTx = await this.signTX(tx);
+    let receipt = await this.broadcastTX(serializedTx);
+    console.log("Receipt", receipt);
+    const gasUsed = await extractGasUsedFromReceipt(receipt);
+    console.log("Gas Used", gasUsed);
+    if (gasUsed > 0) {
+      await this.gasEstimator.readAndUpdate(methodName, gasUsed);
+    }
   }
 
   /**
@@ -600,7 +637,7 @@ export class Client {
       .liquidateBorrow(account, decimal, collateralAddress)
       .encodeABI();
 
-    await this.executeTX(borrowedAddress, data, "0x0");
+    await this.executeTX(borrowedAddress, data, "0x0", "liquidate");
   }
 }
 
@@ -712,4 +749,16 @@ function addressToSymbol(address: string): string {
     }
   }
   return "0x0";
+}
+
+async function extractGasUsedFromReceipt(
+  txReceipt: TransactionReceipt
+): Promise<number> {
+  try {
+    let gasUsed = txReceipt.gasUsed;
+    return gasUsed;
+  } catch (e) {
+    console.log(e);
+  }
+  return 0;
 }

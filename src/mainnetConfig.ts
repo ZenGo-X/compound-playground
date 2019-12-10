@@ -7,7 +7,7 @@ export const config = {
   cUSDCContract: "0x39aa39c021dfbae8fac545936693ac917d5e7563",
   cWBTCContract: "0xc11b1268c1a384e55c48c2391d8d480264a3a7f4",
   cZRXContract: "0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407",
-  comptrollerContract: "0xb081cf57b1e422b3e627544ec95992cbe8eaf9cb",
+  comptrollerContract: "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b",
   priceOracleContract: "0xc7e20cf485b8e0bcec3e2fcc23e3ad93b1b0cb39"
 };
 

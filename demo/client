@@ -22,8 +22,9 @@ program
 
 program
     .command('balance <symbol>')
-    .action(async (symbol) => {
-        await client.init();
+    .option('-d --db <dbpath>' )
+    .action(async (symbol, options) => {
+        await client.init(options.db);
         let balance;
         if (symbol === 'eth') {
             balance = await client.getBalanceETH();
@@ -53,8 +54,9 @@ program
 
 program
     .command('mint <symbol> <amount>')
-    .action(async (symbol, amount) => {
-        await client.init();
+    .option('-d --db <dbpath>' )
+    .action(async (symbol, amount, options) => {
+        await client.init(options.db);
         if (symbol === "ceth") {
             client.mintCETH(amount)
         } else { 
@@ -65,15 +67,17 @@ program
 
 program
     .command('liquidate <account> <bsym> <amount> <csym>')
-    .action(async (account, bsym, amount, csym) => {
-        await client.init();
+    .option('-d --db <dbpath>' )
+    .action(async (account, bsym, amount, csym, options) => {
+        await client.init(options.db);
         client.liquidate(account, bsym, amount, csym)
     });
 
 program
     .command('appmint <symbol> <amount>')
-    .action(async (symbol, amount) => {
-        await client.init();
+    .option('-d --db <dbpath>' )
+    .action(async (symbol, amount, options) => {
+        await client.init(options.db);
         if (symbol === "ceth") {
             client.mintCETH(amount)
         } else { 
@@ -83,22 +87,24 @@ program
 
 program
     .command('borrow <symbol> <amount>')
-    .action(async (symbol, amount) => {
-        await client.init();
+    .option('-d --db <dbpath>' )
+    .action(async (symbol, amount, options) => {
+        await client.init(options.db);
         client.borrowCToken(symbol, amount)
     });
 
 program
     .command('estimate <symbol> <amount>')
     .action(async (symbol, amount) => {
-        await client.init();
+        await client.init(options.db);
         await client.estimateCToken(symbol, amount);
     });
 
 program
     .command('redeem <symbol> <amount>')
-    .action(async (symbol, amount) => {
-        await client.init();
+    .option('-d --db <dbpath>' )
+    .action(async (symbol, amount, options) => {
+        await client.init(options.db);
         if (amount == 'all') {
             await client.redeemCToken(symbol, 0, true);
         } else {
@@ -110,15 +116,17 @@ program
 
 program
     .command('approve <symbol> <amount>')
-    .action(async (symbol, amount) => {
-        await client.init();
+    .option('-d --db <dbpath>' )
+    .action(async (symbol, amount, options) => {
+        await client.init(options.db);
         await client.approveCToken(symbol, amount);
     });
 
 program
     .command('enter <symbol>')
-    .action(async (symbol) => {
-        await client.init();
+    .option('-d --db <dbpath>' )
+    .action(async (symbol, options) => {
+        await client.init(options.db);
         if (symbol === "all") {
             await client.enterAllMarkets();
         } else {
@@ -128,16 +136,18 @@ program
 
 program
     .command('accrued <symbol>')
-    .action(async (symbol) => {
-        await client.init();
+    .option('-d --db <dbpath>' )
+    .action(async (symbol, options) => {
+        await client.init(options.db);
         let accrued = await client.accruedInterest(symbol);
         console.log(accrued)
     });
 
 program
     .command('exit <symbol>')
-    .action(async (symbol) => {
-        await client.init();
+    .option('-d --db <dbpath>' )
+    .action(async (symbol, options) => {
+        await client.init(options.db);
         await client.exitMarket(symbol);
     });
 

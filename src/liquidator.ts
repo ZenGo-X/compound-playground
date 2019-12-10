@@ -20,6 +20,7 @@ const web3 = new Web3(
 );
 
 import { config, cTokenAPI } from "./ropstenConfig";
+// import { config, cTokenAPI } from "./mainnetConfig";
 
 import { COMPTROLLER_INTERFACE } from "./comptroller-interface";
 
@@ -44,3 +45,6 @@ export class Liquidator {
     console.log(markets);
   }
 }
+
+// Example of finding liquidatable addresses
+/// https://api.compound.finance/api/v2/account?max_health{}={value:1}?page_size=1000
