@@ -21,8 +21,6 @@ import { PRICE_ORACLE_INTERFACE } from "./priceOracle-interface";
 
 //const CHAIN = "mainnet";
 const CHAIN = "ropsten";
-const APPROVE_COST = 50000;
-const MINT_CONST = 220000;
 
 const fetch = require("node-fetch");
 
@@ -295,9 +293,6 @@ export class Client {
       contractAddress
     );
 
-    let loadedGasLimit = await this.gasEstimator.getLimit("approve");
-    console.log("Loaded", loadedGasLimit);
-
     // The transaction to approve is sent to the underlying contract
     const underlyingContract = new web3.eth.Contract(
       ERC20_INERFACE,
@@ -328,8 +323,12 @@ export class Client {
    */
   public async approveAndMintCToken(sym: string, amount: string) {
     const nonce = await web3.eth.getTransactionCount(this.address.getAddress());
-    this.approveCToken(sym, amount, nonce, APPROVE_COST);
-    this.mintCToken(sym, amount, nonce + 1, MINT_CONST);
+    let approveLimit = await this.gasEstimator.getLimit("approve");
+    let mintLimit = await this.gasEstimator.getLimit("mintCToken");
+    console.log("Using " + approveLimit + " for approve");
+    console.log("Using " + mintLimit + " for mint");
+    this.approveCToken(sym, amount, nonce, approveLimit);
+    this.mintCToken(sym, amount, nonce + 1, mintLimit);
   }
 
   /**
@@ -543,12 +542,36 @@ export class Client {
       gasLimit
     );
     let serializedTx = await this.signTX(tx);
-    let receipt = await this.broadcastTX(serializedTx);
-    console.log("Receipt", receipt);
-    const gasUsed = await extractGasUsedFromReceipt(receipt);
-    console.log("Gas Used", gasUsed);
-    if (gasUsed > 0) {
-      await this.gasEstimator.readAndUpdate(methodName, gasUsed);
+    try {
+      let receipt = await this.broadcastTX(serializedTx);
+      console.log("Receipt", receipt);
+      const gasUsed = await extractGasUsedFromReceipt(receipt);
+      console.log("Gas Used", gasUsed);
+      if (gasUsed > 0) {
+        await this.gasEstimator.readAndUpdate(methodName, gasUsed);
+      }
+    } catch (e) {
+      console.log("Trasanction execution failed for low gas, estimating...");
+      let gasLimit: number = await web3.eth.estimateGas({
+        from: this.address.getAddress(),
+        to: contractAddress,
+        data: data,
+        value: value
+      });
+      await this.gasEstimator.readAndUpdate(methodName, gasLimit);
+      console.log("Excuting again");
+      const nonce = await web3.eth.getTransactionCount(
+        this.address.getAddress()
+      );
+      let tx = await this.generateTX(
+        contractAddress,
+        data,
+        value,
+        nonce,
+        gasLimit
+      );
+      let serializedTx = await this.signTX(tx);
+      let receipt = await this.broadcastTX(serializedTx);
     }
   }
 
@@ -631,8 +654,6 @@ export class Client {
     // const hexAmount = decimal.toHex();
 
     const myContract = new web3.eth.Contract(iface, borrowedAddress);
-    console.log(1000000000000000000);
-    console.log(decimal);
     const data = myContract.methods
       .liquidateBorrow(account, decimal, collateralAddress)
       .encodeABI();

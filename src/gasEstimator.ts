@@ -24,13 +24,12 @@ export class GasEstimator {
       this.limits = {};
     } else {
       this.limits = limits;
-      console.log("Limits", this.limits);
     }
   }
 
   public async getLimit(method: string): Promise<number> {
     if (method in this.limits) {
-      return this.limits[method] * MARGIN;
+      return Math.round(this.limits[method] * MARGIN);
     } else {
       this.limits[method] = 0;
       await this.db.set("limits", this.limits).write();
@@ -47,6 +46,11 @@ export class GasEstimator {
         this.limits[method] = measured_limit;
         await this.db.set("limits", this.limits).write();
       }
+      // A new method was called
+    } else {
+      console.log("Creating gas for ", method);
+      this.limits[method] = measured_limit;
+      await this.db.set("limits", this.limits).write();
     }
     return;
   }
