@@ -617,7 +617,7 @@ export class Client {
   public async accruedInterest(sym: string): Promise<string> {
     const apiCall = addressAPI + this.address.getAddress();
     const response = await fetch(apiCall);
-    const json: addressResponse = await response.json();
+    const json: AddressResponse = await response.json();
     // Without errors, there should only be one returned accout
     const tokens: TokenInfo[] = json.accounts[0].tokens;
     for (const token of tokens) {
@@ -662,11 +662,11 @@ export class Client {
   }
 }
 
-interface addressResponse {
-  accounts: addressInfo[];
+interface AddressResponse {
+  accounts: AddressInfo[];
 }
 
-interface addressInfo {
+interface AddressInfo {
   address: string;
   health: KeyValue;
   tokens: TokenInfo[];

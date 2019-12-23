@@ -2,6 +2,8 @@
   "compilerOptions": {
     /* Basic Options */
     "declaration": true,                   /* Generates corresponding '.d.ts' file. */
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
     "declarationDir": "./dist/types",
     "outDir": "./dist/src",
     "rootDir": "./src",/* Redirect output structure to the directory. */

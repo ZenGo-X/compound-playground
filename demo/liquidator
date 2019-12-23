@@ -8,14 +8,23 @@ const liquidator = new Liquidator();
 
 program
     .command('check <address>')
+    .description('Check the health of the address (Mainnet only)')
     .action(async (address) => {
         liquidator.checkLiquidity(address);
     });
 
 program
     .command('assets <address>')
+    .description('Get the assets the address participates in')
     .action(async (address) => {
         liquidator.getAssets(address);
+    });
+
+program
+    .command('events')
+    .description('Get all liquidation events')
+    .action(async () => {
+        liquidator.getLiquidationEvents();
     });
 
 
