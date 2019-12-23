@@ -20,7 +20,7 @@ import { ERC20_INERFACE } from "./erc20-interface";
 import { PRICE_ORACLE_INTERFACE } from "./priceOracle-interface";
 
 //const CHAIN = "mainnet";
-const CHAIN = "ropsten";
+const CHAIN = "mainnet";
 
 const fetch = require("node-fetch");
 
@@ -33,7 +33,7 @@ const web3 = new Web3(
 
 // TODO add logic to configure by network
 // import { config, markets_list, addressAPI } from "./ropstenConfig";
-import { config, markets_list, addressAPI } from "./ropstenConfig";
+import { config, markets_list, addressAPI } from "./mainnetConfig";
 
 const CLIENT_DB_PATH = path.join(__dirname, "../../client_db");
 
@@ -732,9 +732,47 @@ function symbolToAddress(sym: string): string {
 }
 
 /**
+ * This is a temporary place holder, real prices need to be obtained
+ * from a decent API
+ */
+export function addressToPrice(address: string): number {
+  switch (address) {
+    case config.cBATContract: {
+      return 0.0039;
+      break;
+    }
+    case config.cDAIContract: {
+      return 0.0211;
+      break;
+    }
+    case config.cETHContract: {
+      return 3.0154;
+      break;
+    }
+    case config.cREPContract: {
+      return 0.2126;
+      break;
+    }
+    case config.cSAIContract: {
+      return 0.0211;
+      break;
+    }
+    case config.cWBTCContract: {
+      return 148.3473;
+      break;
+    }
+    case config.cZRXContract: {
+      return 0.0051;
+      break;
+    }
+  }
+  return 0;
+}
+
+/**
  * Covert address to symbol
  */
-function addressToSymbol(address: string): string {
+export function addressToSymbol(address: string): string {
   switch (address) {
     case config.cBATContract: {
       return "cbat";
