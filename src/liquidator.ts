@@ -27,16 +27,10 @@ import { config, cTokenAPI } from "./mainnetConfig";
 import { COMPTROLLER_INTERFACE } from "./comptroller-interface";
 import { CTOKEN_JSON_INTERFACE } from "./cToken-interface";
 
-interface LiquidationEventResult {
-  cTokenCollateral: string;
-  seizeTokens: number;
-  repayAmount: number;
-}
-
-interface LiquidationData {
-  price: number;
-  symbol: string;
+interface Liquidation extends EventData {
   revenue: number;
+  timestampISO: string;
+  timestamp: number | string;
 }
 
 export class Liquidator {
@@ -86,37 +80,42 @@ export class Liquidator {
         let dailyRevenue = {};
         let liquidatorsByRevenue = {};
         let liquidatedBorrowersByRevenue = {};
-        liquidations.forEach(liquidation => {
-          let revenue = this.calculateRevenue(liquidation);
+        liquidations.forEach(event => {
+          let liquidation: Liquidation = event as Liquidation;
+          let revenue = this.calculateRevenue(
+            config.cUSDCContract,
+            liquidation
+          );
           console.log("Revenue", revenue);
           totalRevenue += revenue;
           // 6 here is specific for usdc
           let repayAmount = liquidation.returnValues["repayAmount"] / 10 ** 6;
           totalLiquidation += repayAmount;
-          // distinctLiquidators.add(liquidation.returnValues["liquidator"]);
-          // distinctBorrowers.add(liquidation.returnValues["borrower"]);
-          // this.calculateLiquidatorsByRevenue(liquidation, liquidatorsByRevenue);
-          // this.calculateLiquidatedBorrowersByRevenue(
-          //   liquidation,
-          //   liquidatedBorrowersByRevenue
-          // );
-          // web3.eth.getBlock(liquidation.blockNumber, (error, block) => {
-          //   blocksRetrieved++;
-          //   liquidation.timestamp = block.timestamp;
-          //   liquidation.timestampISO = new Date(
-          //     block.timestamp * 1000
-          //   ).toISOString();
-          //   // wait for all blocks to be retrieved.
-          //   if (blocksRetrieved === liquidations.length) {
-          //     dailyRevenue = liquidations.reduce(function(acc, cur) {
-          //       let date = cur.timestampISO.substring(0, 10);
-          //       acc[date] = (acc[date] || 0) + cur.revenue;
-          //       return acc;
-          //     }, {});
-          //     // trigger ui update once after all blocks have been retrieved
-          //     // to avoid degrading performance.
-          //   }
-          // });
+          var acc: { [id: string]: number } = {};
+          web3.eth.getBlock(liquidation.blockNumber, (error, block) => {
+            blocksRetrieved++;
+            liquidation.timestamp = block.timestamp;
+            liquidation.timestampISO = new Date(
+              Number(block.timestamp) * 1000
+            ).toISOString();
+            console.log("Timestamp", liquidation.timestamp);
+            console.log("TimestampISO", liquidation.timestampISO);
+            let date = liquidation.timestampISO.substring(0, 10);
+            acc[date] = (acc[date] || 0) + revenue;
+
+            // wait for all blocks to be retrieved.
+            // if (blocksRetrieved === liquidations.length) {
+            //   dailyRevenue = liquidations.reduce(function(acc, event) {
+            //     console.log("Processing", event);
+            //     // let cur = event as Liquidation;
+            //     // let date = cur.timestampISO.substring(0, 10);
+            //     // acc[date] = (acc[date] || 0) + cur.revenue;
+            //     return acc;
+            //   }, {});
+            //   // trigger ui update once after all blocks have been retrieved
+            //   // to avoid degrading performance.
+            // }
+          });
         });
       } catch (error) {
         console.log(error);
@@ -124,24 +123,13 @@ export class Liquidator {
     }
   }
 
-  calculateRevenue(liquidation: EventData) {
-    const cTokenAddress: string = liquidation.returnValues["cTokenCollateral"];
-    console.log(cTokenAddress);
-    // TODO Use my address to map
-    // let liquidationData: LiquidationData;
-    let liquidatedSymbol = addressToSymbol(cTokenAddress.toLowerCase());
-    console.log("Symbol", liquidatedSymbol);
-    const price = addressToPrice(cTokenAddress.toLowerCase());
-    console.log("Price", price);
-    const seizeTokens = liquidation.returnValues["seizeTokens"] / 10 ** 8;
-    // Liquidation incentive is 1.05.
-    // seizeTokens = x * 1.05
-    // x = seizeTokens / 1.05
-    // revenue = seizeTokens - x
-    // revenue = seizeTokens - (seizeTokens / 1.05)
+  calculateRevenue(address: string, liquidation: EventData) {
+    let sentTokens = liquidation.returnValues["repayAmount"];
+    // Specific to a ctoken, get from map
+    sentTokens = sentTokens / 10 ** 6;
+    const price = addressToPrice(address);
     const liquidationIncentive = 1.05;
-    let revenue = seizeTokens - seizeTokens / liquidationIncentive;
-    revenue = revenue * price;
+    let revenue = sentTokens * price;
     return revenue;
   }
 }

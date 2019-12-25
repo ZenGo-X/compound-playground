@@ -753,6 +753,10 @@ export function addressToPrice(address: string): number {
       return 0.2126;
       break;
     }
+    case config.cUSDCContract: {
+      return 1.0;
+      break;
+    }
     case config.cSAIContract: {
       return 0.0211;
       break;
