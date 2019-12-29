@@ -7,7 +7,8 @@ import FileSync from "lowdb/adapters/FileSync";
 import { CompAddress } from "./compAddress";
 import { AbiItem } from "web3-utils";
 import { EventData } from "web3-eth-contract";
-import { addressToSymbol, addressToPrice } from "./client";
+import { addressToSymbol, addressToPrice, addressToDecimals } from "./client";
+import { ExportToCsv } from "export-to-csv";
 const EthereumTx = require("ethereumjs-tx").Transaction;
 import Web3 from "web3";
 
@@ -26,11 +27,18 @@ import { config, cTokenAPI } from "./mainnetConfig";
 
 import { COMPTROLLER_INTERFACE } from "./comptroller-interface";
 import { CTOKEN_JSON_INTERFACE } from "./cToken-interface";
+import { CETH_JSON_INTERFACE } from "./cEth-interface";
 
-interface Liquidation extends EventData {
-  revenue: number;
+interface Liquidation {
+  transactionHash: string;
   timestampISO: string;
-  timestamp: number | string;
+  date: number | string;
+  amount: number;
+  revenue: number;
+  liquidatee: string;
+  liquidator: string;
+  collaterizedToken: string;
+  liquidatedToken: string;
 }
 
 export class Liquidator {
@@ -55,11 +63,9 @@ export class Liquidator {
   }
 
   public async getLiquidationEvents() {
+    let address = config.cZRXContract;
     // Implies only liquidations of Compound USDC debt are retrieved.
-    let compoundUsd = new web3.eth.Contract(
-      CTOKEN_JSON_INTERFACE,
-      config.cUSDCContract
-    );
+    let compoundUsd = new web3.eth.Contract(CTOKEN_JSON_INTERFACE, address);
     if (compoundUsd) {
       let options = {
         fromBlock: 0,
@@ -80,58 +86,95 @@ export class Liquidator {
         let dailyRevenue = {};
         let liquidatorsByRevenue = {};
         let liquidatedBorrowersByRevenue = {};
-        liquidations.forEach(event => {
-          let liquidation: Liquidation = event as Liquidation;
-          let revenue = this.calculateRevenue(
-            config.cUSDCContract,
-            liquidation
-          );
-          console.log("Revenue", revenue);
+        var acc: { [id: string]: number } = {};
+        var allEvents = [];
+        for (let event of liquidations) {
+          let amount = this.getRepaidAmount(address, event);
+          let revenue = amount * 0.05;
           totalRevenue += revenue;
-          // 6 here is specific for usdc
-          let repayAmount = liquidation.returnValues["repayAmount"] / 10 ** 6;
+          let decimals = addressToDecimals(address);
+          let repayAmount = event.returnValues["repayAmount"] / 10 ** 6;
           totalLiquidation += repayAmount;
-          var acc: { [id: string]: number } = {};
-          web3.eth.getBlock(liquidation.blockNumber, (error, block) => {
-            blocksRetrieved++;
-            liquidation.timestamp = block.timestamp;
-            liquidation.timestampISO = new Date(
-              Number(block.timestamp) * 1000
-            ).toISOString();
-            console.log("Timestamp", liquidation.timestamp);
-            console.log("TimestampISO", liquidation.timestampISO);
-            let date = liquidation.timestampISO.substring(0, 10);
-            acc[date] = (acc[date] || 0) + revenue;
+          let block = await web3.eth.getBlock(event.blockNumber);
+          let timestamp = block.timestamp;
+          let timestampISO = new Date(
+            Number(block.timestamp) * 1000
+          ).toISOString();
+          let liquidator = this.getLiquidator(event);
+          let liquidatee = this.getLiquidatee(event);
+          let collaterizedToken = this.getCollaterized(event);
+          console.log("-------------------------");
+          console.log("Timestamp", timestamp);
+          console.log("TimestampISO", timestampISO);
+          console.log("Amount", amount);
+          console.log("Revenue", revenue);
+          console.log("Hash", event.transactionHash);
+          let date = timestampISO.substring(0, 10);
+          acc[date] = (acc[date] || 0) + revenue;
 
-            // wait for all blocks to be retrieved.
-            // if (blocksRetrieved === liquidations.length) {
-            //   dailyRevenue = liquidations.reduce(function(acc, event) {
-            //     console.log("Processing", event);
-            //     // let cur = event as Liquidation;
-            //     // let date = cur.timestampISO.substring(0, 10);
-            //     // acc[date] = (acc[date] || 0) + cur.revenue;
-            //     return acc;
-            //   }, {});
-            //   // trigger ui update once after all blocks have been retrieved
-            //   // to avoid degrading performance.
-            // }
-          });
-        });
+          let liquidation: Liquidation = {
+            transactionHash: event.transactionHash,
+            timestampISO: timestampISO,
+            date: date,
+            amount: amount,
+            revenue: revenue,
+            liquidator: liquidator,
+            liquidatee: liquidatee,
+            collaterizedToken: collaterizedToken,
+            liquidatedToken: "ZRX"
+          };
+          allEvents.push(liquidation);
+        }
+        console.log("Acc", acc);
+        exportToCSV(allEvents, "czrx-liquidations.csv");
       } catch (error) {
         console.log(error);
       }
     }
   }
 
-  calculateRevenue(address: string, liquidation: EventData) {
+  getRepaidAmount(address: string, liquidation: EventData) {
     let sentTokens = liquidation.returnValues["repayAmount"];
     // Specific to a ctoken, get from map
-    sentTokens = sentTokens / 10 ** 6;
+    let decimals = addressToDecimals(address);
+    sentTokens = sentTokens / 10 ** decimals;
     const price = addressToPrice(address);
     const liquidationIncentive = 1.05;
     let revenue = sentTokens * price;
     return revenue;
   }
+
+  getLiquidator(liquidation: EventData): string {
+    return liquidation.returnValues["liquidator"];
+  }
+
+  getLiquidatee(liquidation: EventData): string {
+    return liquidation.returnValues["borrower"];
+  }
+
+  getCollaterized(liquidation: EventData): string {
+    let colAddress = liquidation.returnValues["cTokenCollateral"];
+    let sym = addressToSymbol(colAddress.toLowerCase());
+    console.log("Symbol", sym);
+    return sym;
+  }
+}
+
+async function exportToCSV(txArray: Liquidation[], outputFile: string) {
+  const options = {
+    fieldSeparator: ",",
+    quoteStrings: '"',
+    decimalSeparator: ".",
+    showLabels: true,
+    showTitle: false,
+    useTextFile: false,
+    useBom: true,
+    useKeysAsHeaders: true
+  };
+
+  const csvExporter = new ExportToCsv(options);
+  const csvData = csvExporter.generateCsv(txArray, true);
+  await fs.writeFileSync(outputFile, csvData);
 }
 
 // Example of finding liquidatable addresses

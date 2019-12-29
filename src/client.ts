@@ -736,21 +736,21 @@ function symbolToAddress(sym: string): string {
  * from a decent API
  */
 export function addressToPrice(address: string): number {
-  switch (address) {
+  switch (address.toLowerCase()) {
     case config.cBATContract: {
-      return 0.0039;
+      return 0.166156;
       break;
     }
     case config.cDAIContract: {
-      return 0.0211;
+      return 1.0;
       break;
     }
     case config.cETHContract: {
-      return 3.0154;
+      return 126.06;
       break;
     }
     case config.cREPContract: {
-      return 0.2126;
+      return 9.56;
       break;
     }
     case config.cUSDCContract: {
@@ -758,15 +758,15 @@ export function addressToPrice(address: string): number {
       break;
     }
     case config.cSAIContract: {
-      return 0.0211;
+      return 1.0;
       break;
     }
     case config.cWBTCContract: {
-      return 148.3473;
+      return 7303;
       break;
     }
     case config.cZRXContract: {
-      return 0.0051;
+      return 0.187;
       break;
     }
   }
@@ -777,7 +777,7 @@ export function addressToPrice(address: string): number {
  * Covert address to symbol
  */
 export function addressToSymbol(address: string): string {
-  switch (address) {
+  switch (address.toLowerCase()) {
     case config.cBATContract: {
       return "cbat";
       break;
@@ -812,6 +812,44 @@ export function addressToSymbol(address: string): string {
     }
   }
   return "0x0";
+}
+
+export function addressToDecimals(address: string): number {
+  switch (address.toLowerCase()) {
+    case config.cBATContract: {
+      return 18;
+      break;
+    }
+    case config.cDAIContract: {
+      return 18;
+      break;
+    }
+    case config.cETHContract: {
+      return 18;
+      break;
+    }
+    case config.cREPContract: {
+      return 18;
+      break;
+    }
+    case config.cUSDCContract: {
+      return 6;
+      break;
+    }
+    case config.cSAIContract: {
+      return 18;
+      break;
+    }
+    case config.cWBTCContract: {
+      return 8;
+      break;
+    }
+    case config.cZRXContract: {
+      return 18;
+      break;
+    }
+  }
+  return 0;
 }
 
 async function extractGasUsedFromReceipt(
