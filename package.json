@@ -16,6 +16,7 @@
     "@types/node": "^12.7.2",
     "decimal.js": "^10.2.0",
     "ethereumjs-tx": "^2.1.0",
+    "export-to-csv": "^0.2.1",
     "lowdb": "^1.0.0",
     "node-fetch": "^2.6.0",
     "typescript": "^3.7.2",
