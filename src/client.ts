@@ -434,6 +434,7 @@ export class Client {
     this.db.defaults().write();
   }
 
+  // Only estimate the gas cost of a transaction without execution
   private async estimateTX(
     contractAddress: string,
     data: string,
@@ -454,6 +455,7 @@ export class Client {
     console.log("Gas Limit: ", gasLimit);
   }
 
+  // Create a serialized tx from the passed values
   private async generateTX(
     contractAddress: string,
     data: string,
@@ -492,6 +494,7 @@ export class Client {
     return tx;
   }
 
+  // Sign the transaction and return the sign hex value
   private async signTX(tx: Transaction): Promise<Buffer> {
     console.log("signing tx...");
     // alternatively, we can call `tx.hash()` and sign it using an external signer
@@ -501,6 +504,7 @@ export class Client {
     return tx.serialize();
   }
 
+  // Broadcast the transaction to the provider, and return the receipt
   private async broadcastTX(serializedTx: Buffer): Promise<TransactionReceipt> {
     let receipt = await web3.eth
       .sendSignedTransaction("0x" + serializedTx.toString("hex"))
@@ -520,7 +524,10 @@ export class Client {
   }
 
   /**
-   * Execute any web3 transaction with passed parameters
+   * Execute web3 transaction with passed parameters
+   * Create serialized transaction
+   * Sign
+   * Broadcast
    */
   private async executeTX(
     contractAddress: string,
@@ -547,10 +554,14 @@ export class Client {
       console.log("Receipt", receipt);
       const gasUsed = await extractGasUsedFromReceipt(receipt);
       console.log("Gas Used", gasUsed);
+      // Update the gas estimation according to the receipt
       if (gasUsed > 0) {
         await this.gasEstimator.readAndUpdate(methodName, gasUsed);
       }
+      // If the transaction failed on inefficient gas, try to estimate gas
+      // with API and retransmit.
     } catch (e) {
+      // TODO: Check the failure is due to gas limit
       console.log("Trasanction execution failed for low gas, estimating...");
       let gasLimit: number = await web3.eth.estimateGas({
         from: this.address.getAddress(),
@@ -558,8 +569,11 @@ export class Client {
         data: data,
         value: value
       });
+      // In case of failure, we update the gas according to the
+      // value received from estimate gas
       await this.gasEstimator.readAndUpdate(methodName, gasLimit);
       console.log("Excuting again");
+      // Need to get a new nonce, failed transaction increases the nonce
       const nonce = await web3.eth.getTransactionCount(
         this.address.getAddress()
       );
@@ -629,6 +643,11 @@ export class Client {
     return "No such token for address";
   }
 
+  // Liquidate an outstanding borrower.
+  // Receives the address of the liquidated account
+  // The symbol to liquidate (the borrow you will pay on behalf)
+  // The amount to pay in underlying value
+  // The symbol for the collateral to be received in exchange
   public async liquidate(
     account: string,
     borrowedSym: string,
@@ -662,6 +681,7 @@ export class Client {
   }
 }
 
+// Interfaces for api call responses
 interface addressResponse {
   accounts: addressInfo[];
 }
