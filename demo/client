@@ -9,7 +9,7 @@ const client = new Client();
 
 
 program
-    .command('address')
+    .command('address', 'Generate a new address or print the existing one')
     .option('-i, --init')
     .option('-s, --show')
     .action(async (options) => {
@@ -21,7 +21,7 @@ program
     });
 
 program
-    .command('balance <symbol>')
+    .command('balance <symbol>', "Get balance in unerlying token or cToken converted")
     .option('-d --db <dbpath>' )
     .action(async (symbol, options) => {
         await client.init(options.db);
@@ -37,23 +37,23 @@ program
     });
 
 program
-    .command('apr <symbol>')
+    .command('apr <symbol>', "Get anual revenew from compoud API (mainnet)")
     .action(async (symbol) => {
         let apr = await getAPR(symbol);
-        apr_num = Number(apr) * 100;
+        let apr_num = Number(apr) * 100;
         console.log (parseFloat(Math.round(apr_num * 100) / 100).toFixed(2) + "%")
     });
 
 program
-    .command('capr <symbol>')
+    .command('capr <symbol>', "Get anual revenew from web3 contract")
     .action(async (symbol) => {
         let apr = await getContractAPR(symbol);
-        apr_num = Number(apr) * 100;
+        let apr_num = Number(apr) * 100;
         console.log (parseFloat(Math.round(apr_num * 100) / 100).toFixed(2) + "%")
     });
 
 program
-    .command('mint <symbol> <amount>')
+    .command('mint <symbol> <amount>', "Lend an amount specified to the compound contract")
     .option('-d --db <dbpath>' )
     .action(async (symbol, amount, options) => {
         await client.init(options.db);
@@ -66,7 +66,7 @@ program
 
 
 program
-    .command('liquidate <account> <bsym> <amount> <csym>')
+    .command('liquidate <account> <bsym> <amount> <csym>', "Liquidate an account, paying borrowed token, and receiving ctoken")
     .option('-d --db <dbpath>' )
     .action(async (account, bsym, amount, csym, options) => {
         await client.init(options.db);
@@ -74,7 +74,7 @@ program
     });
 
 program
-    .command('appmint <symbol> <amount>')
+    .command('appmint <symbol> <amount>', "Approve and lend the specifed amount of the underlying token")
     .option('-d --db <dbpath>' )
     .action(async (symbol, amount, options) => {
         await client.init(options.db);
@@ -86,7 +86,7 @@ program
     });
 
 program
-    .command('borrow <symbol> <amount>')
+    .command('borrow <symbol> <amount>', "Borrow the specifed amount of the underlying token")
     .option('-d --db <dbpath>' )
     .action(async (symbol, amount, options) => {
         await client.init(options.db);
@@ -94,14 +94,14 @@ program
     });
 
 program
-    .command('estimate <symbol> <amount>')
-    .action(async (symbol, amount) => {
+    .command('estimate <symbol> <amount>', "Estimate gas limit of minting transaction")
+    .action(async (symbol, amount, options) => {
         await client.init(options.db);
         await client.estimateCToken(symbol, amount);
     });
 
 program
-    .command('redeem <symbol> <amount>')
+    .command('redeem <symbol> <amount>', "Redeem the amount of underlying token from lending")
     .option('-d --db <dbpath>' )
     .action(async (symbol, amount, options) => {
         await client.init(options.db);
@@ -115,7 +115,7 @@ program
 
 
 program
-    .command('approve <symbol> <amount>')
+    .command('approve <symbol> <amount>', "Approve the amount to be managed by compound")
     .option('-d --db <dbpath>' )
     .action(async (symbol, amount, options) => {
         await client.init(options.db);
@@ -123,7 +123,7 @@ program
     });
 
 program
-    .command('enter <symbol>')
+    .command('enter <symbol>', "Enter compound market, 'all' to enter all")
     .option('-d --db <dbpath>' )
     .action(async (symbol, options) => {
         await client.init(options.db);
@@ -135,7 +135,7 @@ program
     });
 
 program
-    .command('accrued <symbol>')
+    .command('accrued <symbol>', "Get lifetime interest accrued per symbol")
     .option('-d --db <dbpath>' )
     .action(async (symbol, options) => {
         await client.init(options.db);
@@ -144,11 +144,11 @@ program
     });
 
 program
-    .command('exit <symbol>')
+    .command('exit <symbol>', "Exclude the specifed address from collateral")
     .option('-d --db <dbpath>' )
     .action(async (symbol, options) => {
         await client.init(options.db);
         await client.exitMarket(symbol);
     });
 
-program.parse(process.argv);
+gram.parse(process.argv);
