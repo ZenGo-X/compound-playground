@@ -5,11 +5,10 @@ import fs from "fs";
 import path from "path";
 import low from "lowdb";
 import FileSync from "lowdb/adapters/FileSync";
-import { CompAddress } from "./compAddress";
 import { GasEstimator } from "./gasEstimator";
 import { AbiItem } from "web3-utils";
 import { Transaction } from "ethereumjs-tx";
-import { TransactionReceipt } from "web3-core";
+import { Account, TransactionReceipt } from "web3-core";
 import Web3 from "web3";
 
 // import interfaces: Should be the same for mainnet/testnet
@@ -50,7 +49,7 @@ export class Client {
   private mainnet: boolean;
   private db: any;
   private gasEstimator: GasEstimator;
-  private address: CompAddress;
+  private account: Account;
 
   constructor(mainnet: boolean = false, useAsyncBroadcast: boolean = false) {
     this.mainnet = mainnet;
@@ -60,11 +59,11 @@ export class Client {
   public async init(path: string = `${CLIENT_DB_PATH}/db.json`) {
     this.initDb(path);
     this.gasEstimator.loadData();
-    this.address = await this.restoreOrGenerate();
+    this.account = await this.restoreOrGenerate();
   }
 
-  public getAddress(): CompAddress {
-    return this.address;
+  public getAddress(): Account {
+    return this.account;
   }
 
   //// Enter Markets /////
@@ -118,7 +117,7 @@ export class Client {
    * Get th
    */
   public async getBalanceETH(): Promise<string> {
-    const balance = await web3.eth.getBalance(this.address.getAddress());
+    const balance = await web3.eth.getBalance(this.account.address);
     const balanceInEth = web3.utils.fromWei(balance, "ether");
     return balanceInEth;
   }
@@ -160,7 +159,7 @@ export class Client {
     const myContract = new web3.eth.Contract(ERC20_INERFACE, underlyingAddress);
 
     const balance = await myContract.methods
-      .balanceOf(this.address.getAddress())
+      .balanceOf(this.account.address)
       .call();
 
     const decimals = await myContract.methods.decimals().call();
@@ -190,7 +189,7 @@ export class Client {
       borrowBalance,
       exchangeRate
     ] = await myContract.methods
-      .getAccountSnapshot(this.address.getAddress())
+      .getAccountSnapshot(this.account.address)
       .call();
     let underlyingDecimals = await this.getUnderlyingDecimals(contractAddress);
     let cTokenDecimals: number = await myContract.methods.decimals().call();
@@ -229,7 +228,7 @@ export class Client {
       config.cETHContract
     );
     const data = myContract.methods.mint().encodeABI();
-    const nonce = await web3.eth.getTransactionCount(this.address.getAddress());
+    const nonce = await web3.eth.getTransactionCount(this.account.address);
     const toMint = web3.utils.toWei(amount, "ether");
     const toMintHex = web3.utils.toHex(toMint);
     this.executeTX(config.cETHContract, data, toMintHex, "mintcETH");
@@ -322,7 +321,7 @@ export class Client {
    * to be updated
    */
   public async approveAndMintCToken(sym: string, amount: string) {
-    const nonce = await web3.eth.getTransactionCount(this.address.getAddress());
+    const nonce = await web3.eth.getTransactionCount(this.account.address);
     let approveLimit = await this.gasEstimator.getLimit("approve");
     let mintLimit = await this.gasEstimator.getLimit("mintCToken");
     console.log("Using " + approveLimit + " for approve");
@@ -361,7 +360,7 @@ export class Client {
         borrowBalance,
         exchangeRate
       ] = await myContract.methods
-        .getAccountSnapshot(this.address.getAddress())
+        .getAccountSnapshot(this.account.address)
         .call();
       const data = myContract.methods.redeem(lendBallance).encodeABI();
       this.executeTX(contractAddress, data, "0x0", "redeemCToken");
@@ -412,19 +411,21 @@ export class Client {
   /**
    * Restore a client address for DB if exists, or generate a new one
    */
-  private async restoreOrGenerate(): Promise<CompAddress> {
+  private async restoreOrGenerate(): Promise<Account> {
     let addr = await this.db.get("address").value();
-    if (Object.entries(addr).length === 0 && addr.constructor === Object) {
+    if (
+      !addr ||
+      (Object.entries(addr).length === 0 && addr.constructor === Object)
+    ) {
       return this.generateAddress();
     }
-    return CompAddress.fromPlain(addr);
+    return addr;
   }
 
-  private async generateAddress(): Promise<CompAddress> {
+  private async generateAddress(): Promise<Account> {
     let account = await web3.eth.accounts.create();
-    let addr = new CompAddress(account.address, account.privateKey);
-    this.db.set("address", addr).write();
-    return addr;
+    this.db.set("address", account).write();
+    return account;
   }
 
   private initDb(path: string) {
@@ -440,12 +441,12 @@ export class Client {
     data: string,
     value: string
   ) {
-    const nonce = await web3.eth.getTransactionCount(this.address.getAddress());
-    let gasPrice = Number(await web3.eth.getGasPrice());
+    const nonce = await web3.eth.getTransactionCount(this.account.address);
+    let gasPrice = Number(await web3.eth.getGasPrice()) * 2;
     let gasPriceHex = web3.utils.toHex(gasPrice);
 
     let gasLimit: number = await web3.eth.estimateGas({
-      from: this.address.getAddress(),
+      from: this.account.address,
       to: contractAddress,
       data: data,
       value: value
@@ -468,7 +469,7 @@ export class Client {
 
     if (gasLimit == null) {
       gasLimit = await web3.eth.estimateGas({
-        from: this.address.getAddress(),
+        from: this.account.address,
         to: contractAddress,
         data: data,
         value: value
@@ -498,7 +499,7 @@ export class Client {
   private async signTX(tx: Transaction): Promise<Buffer> {
     console.log("signing tx...");
     // alternatively, we can call `tx.hash()` and sign it using an external signer
-    tx.sign(Buffer.from(this.address.getPrivateKey(), "hex"));
+    tx.sign(Buffer.from(this.account.privateKey, "hex"));
 
     const serializedTx = tx.serialize();
     return tx.serialize();
@@ -538,7 +539,7 @@ export class Client {
     gasLimit?: number
   ) {
     if (nonce == null) {
-      nonce = await web3.eth.getTransactionCount(this.address.getAddress());
+      nonce = await web3.eth.getTransactionCount(this.account.address);
     }
     console.log("Nonce: ", nonce);
     let tx = await this.generateTX(
@@ -564,7 +565,7 @@ export class Client {
       // TODO: Check the failure is due to gas limit
       console.log("Trasanction execution failed for low gas, estimating...");
       let gasLimit: number = await web3.eth.estimateGas({
-        from: this.address.getAddress(),
+        from: this.account.address,
         to: contractAddress,
         data: data,
         value: value
@@ -574,9 +575,7 @@ export class Client {
       await this.gasEstimator.readAndUpdate(methodName, gasLimit);
       console.log("Excuting again");
       // Need to get a new nonce, failed transaction increases the nonce
-      const nonce = await web3.eth.getTransactionCount(
-        this.address.getAddress()
-      );
+      const nonce = await web3.eth.getTransactionCount(this.account.address);
       let tx = await this.generateTX(
         contractAddress,
         data,
@@ -629,7 +628,7 @@ export class Client {
 
   // Returns the accrued supply interest in units of the underlying token
   public async accruedInterest(sym: string): Promise<string> {
-    const apiCall = addressAPI + this.address.getAddress();
+    const apiCall = addressAPI + this.account.address;
     const response = await fetch(apiCall);
     const json: addressResponse = await response.json();
     // Without errors, there should only be one returned accout
