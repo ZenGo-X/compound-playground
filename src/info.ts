@@ -4,7 +4,6 @@ import fs from "fs";
 import path from "path";
 import low from "lowdb";
 import FileSync from "lowdb/adapters/FileSync";
-import { CompAddress } from "./compAddress";
 import { AbiItem } from "web3-utils";
 const EthereumTx = require("ethereumjs-tx").Transaction;
 import Web3 from "web3";
