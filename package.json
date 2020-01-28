@@ -14,16 +14,21 @@
   "dependencies": {
     "@types/lowdb": "^1.0.9",
     "@types/node": "^12.7.2",
+    "bignumber.js": "^9.0.0",
     "decimal.js": "^10.2.0",
     "ethereumjs-tx": "^2.1.0",
     "export-to-csv": "^0.2.1",
     "lowdb": "^1.0.0",
     "node-fetch": "^2.6.0",
-    "typescript": "^3.7.2",
-    "web3": "^1.2.1"
+    "typescript": "^3.7.5",
+    "web3": "^1.2.5"
   },
   "devDependencies": {
     "@types/mocha": "^5.2.7",
+    "@typescript-eslint/eslint-plugin": "^2.18.0",
+    "@typescript-eslint/parser": "^2.18.0",
+    "eslint": "^6.8.0",
+    "eslint-plugin-only-warn": "^1.0.2",
     "mocha": "^6.2.2",
     "ts-node": "^8.5.0"
   }

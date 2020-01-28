@@ -13,7 +13,7 @@ export const config = {
 };
 
 // List of all markets on ropsten chain, should be in separate config
-export const markets_list: string[] = [
+export const marketsList: string[] = [
   config.cETHContract,
   config.cUSDCContract,
   config.cREPContract,
