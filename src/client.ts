@@ -697,7 +697,7 @@ function ensureDirSync(dirpath: string) {
  * Return the cToken contract address of the given symbol
  * 0x0 if no symbol
  */
-function symbolToAddress(sym: string): string {
+export function symbolToAddress(sym: string): string {
   switch (sym) {
     case 'cbat': {
       return config.cBATContract;
