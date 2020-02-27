@@ -24,6 +24,7 @@ const fetch = require('node-fetch');
 // TODO: Config based on network type
 const web3 = new Web3(
   new Web3.providers.HttpProvider(
+    //"http://127.0.0.1:8545"
     `https://${CHAIN}.infura.io/v3/3d93a3a00252437cb50e9a81ad147c99`,
   ),
 );

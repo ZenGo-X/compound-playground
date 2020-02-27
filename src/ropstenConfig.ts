@@ -1,12 +1,13 @@
 export const config = {
-  cDAIContract: "0x2b536482a01e620ee111747f8334b395a42a555e",
-  cSAIContract: "0x2b536482a01e620ee111747f8334b395a42a555e",
-  cETHContract: "0x42a628e0c5f3767930097b34b08dcf77e78e4f2b",
-  cUSDCContract: "0x43a1363afb28235720fcbdf0c2dab7759091f7e0",
-  cREPContract: "0xa3c2c1618214549281e1b15dee9d682c8aa0dc1c",
-  cWBTCContract: "0x06e728d7907c164649427d2acfd4c81669d453bf",
-  cBATContract: "0x189ca88be39c9c1b8c8dd437f5ff1db1f584b14b",
-  cZRXContract: "0xdff375162cfe7d77473c1bec4560dede974e138c",
+  cBATContract: "0xa253295ec2157b8b69c44b2cb35360016daa25b1",
+  cDAIContract: "0x6ce27497a64fffb5517aa4aee908b1e7eb63b9ff",
+  cETHContract: "0x1d70b01a2c3e3b2e56fcdcefe50d5c5d70109a5d",
+  cREPContract: "0x5d4373f8c1af21c391ad7ec755762d8dd3cca809",
+  cSAIContract: "0xccaf265e7492c0d9b7c2f0018bf6382ba7f0148d",
+  cTBTCContract: "0xb40d042a65dd413ae0fd85becf8d722e16bc46f1",
+  cUSDCContract: "0x20572e4c090f15667cf7378e16fad2ea0e2f3eff",
+  cWBTCContract: "0x4d15ee7de1f86248c986f5ae7dce855b1c1a8806",
+  cZRXContract: "0x3a728dd027ad6f76cdea227d5cf5ba7ce9390a3d",
 
   comptrollerContract: "0xb081cf57b1e422b3e627544ec95992cbe8eaf9cb",
   priceOracleContract: "0xc7e20cf485b8e0bcec3e2fcc23e3ad93b1b0cb39"
