@@ -1,7 +1,7 @@
 {
   "name": "compund-playground",
-  "version": "0.1.0",
-  "description": "Ethereum ERC20 playground for ZenGo integration",
+  "version": "0.2.0",
+  "description": "Compound protocol interaction",
   "main": "./dist/src/index.js",
   "types": "./dist/types/index.d.ts",
   "scripts": {

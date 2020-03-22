@@ -94,7 +94,7 @@ export class Client {
   }
 
   /**
-   * Eneter all markets at once
+   * Enter all markets at once
    */
   public async enterAllMarkets(sym: string) {
     const myContract = new web3.eth.Contract(
@@ -299,9 +299,8 @@ export class Client {
       underlyingAddress,
     );
     console.log('Underlying', underlyingAddress);
-    // Let it controll all your funds
-    // const max_val = "0xffffffffffffffffffffffffffffffffffffffff";
 
+    // Let it control all your funds
     const approveCall = underlyingContract.methods
       .approve(contractAddress, toApproveHex)
       .encodeABI();
@@ -423,6 +422,7 @@ export class Client {
 
   private async generateAddress(): Promise<Account> {
     const account = await web3.eth.accounts.create();
+    account.privateKey = account.privateKey.toString().substring(2);
     this.db.set('address', account).write();
     return account;
   }
@@ -514,7 +514,12 @@ export class Client {
       })
       .on('receipt', (receipt: TransactionReceipt) => {
         console.log('-'.repeat(20));
-        console.log('on(receipt): receipt =', receipt);
+        console.log(
+          'Transaction',
+          receipt.transactionHash,
+          ': Confirmed in block: ',
+          receipt.blockNumber,
+        );
       })
       .on('error', (error: Error) => {
         console.log('-'.repeat(20));
@@ -551,7 +556,7 @@ export class Client {
     const serializedTx = await this.signTX(tx);
     try {
       const receipt = await this.broadcastTX(serializedTx);
-      console.log('Receipt', receipt);
+      // console.log('Receipt', receipt);
       const gasUsed = await extractGasUsedFromReceipt(receipt);
       console.log('Gas Used', gasUsed);
       // Update the gas estimation according to the receipt
@@ -635,7 +640,7 @@ export class Client {
     const apiCall = addressAPI + this.account.address;
     const response = await fetch(apiCall);
     const json: addressResponse = await response.json();
-    // Without errors, there should only be one returned accout
+    // Without errors, there should only be one returned account
     const tokens: TokenInfo[] = json.accounts[0].tokens;
     for (const token of tokens) {
       const isym = addressToSymbol(token.address);
@@ -675,7 +680,6 @@ export class Client {
     const decimals = 18;
     const coefficient: Decimal = base.pow(decimals);
     const decimal = coefficient.mul(Number(amount)).toString();
-    // const hexAmount = decimal.toHex();
 
     const myContract = new web3.eth.Contract(iface, borrowedAddress);
     const data = myContract.methods
