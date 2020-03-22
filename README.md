@@ -7,16 +7,22 @@ This also demonstrates how to send multiple Ethereum transaction, without having
 DeFi contracts actions such as lending typically require the pre-approval of a user to be able to transfer ERC20 tokens on his behalf.
 This approval is done by calling the `approve` function of ERC20, where a sender permits a different address (i.e. spender, in this case the DeFi contract) to spend a given amount on his behalf.
 This is usually a mandatory prerequisite before a user can continue to some core action as part of the interaction with the DeFi app. 
-This repository demonstrates how to execute these two transactions with minimal trade-offs between latency and security.
 
 ### The security issue
-This simple solution is to simply perform a single approve of a nearly infinite amount.
 The clear drawback of this solution it allows the contract to withdraw more than the user intended due to a bug, vulnerability etc.
+Once a user approves an infinite amount, the contract might withdraw the entire balance of the approve ERC20.
+The user might not even own any tokens at the moment of approval, the contract might still be able to withdraw them in the future.
 
 ### The parallelization issue
 Sending both transactions (approve, action) in parallel can save time. However, when `estimateGas` function is called on the action Tx, it will not be updated with the results of the user approve, the function simulation will probably fail. 
 This might result in a wrong GasLimit estimation of the action transaction. 
 Consequently, the action Tx will fail upon broadcast.
+Sending both transactions serially (waiting for the first to be confirmed before sending the other) could lead to long waiting periods between before the action is finally complete.
+
+### The solution
+A non compromise solution uses the fact that you can send several transactions in parallel, manually increasing the nonce.
+You also need to manually specify the gasLimit for each transaction.  
+This repository demonstrates how to execute these two transactions with minimal trade-offs between latency and security.
 
 ### Fee estimation algorithm 
 1. Estimate gas based on historical data and set it as __Gas_Limit__
