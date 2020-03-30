@@ -14,7 +14,7 @@ const CHAIN = "ropsten";
 // TODO: Config based on network type
 const web3 = new Web3(
   new Web3.providers.HttpProvider(
-    `https://${CHAIN}.infura.io/v3/3d93a3a00252437cb50e9a81ad147c99`
+    `https://${CHAIN}.infura.io/v3/a8ae4da4221e4c28a00ee2efb76eea07`
   )
 );
 
