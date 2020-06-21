@@ -3,6 +3,7 @@
     "approve": 47718,
     "mintCToken": 209650,
     "redeemCToken": 365360,
-    "mintcETH": 110219
+    "mintcETH": 110219,
+    "claimComp": 628115
   }
 }

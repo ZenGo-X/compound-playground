@@ -14,6 +14,7 @@ import Web3 from 'web3';
 import { CETH_JSON_INTERFACE } from './cEth-interface';
 import { CTOKEN_JSON_INTERFACE } from './cToken-interface';
 import { COMPTROLLER_INTERFACE } from './comptroller-interface';
+import { COMPOUND_LENS_INTERFACE } from './compoundLense-interface';
 import { ERC20_INERFACE } from './erc20-interface';
 
 //const CHAIN = "mainnet";
@@ -113,6 +114,65 @@ export class Client {
     const balance = await web3.eth.getBalance(this.account.address);
     const balanceInEth = web3.utils.fromWei(balance, 'ether');
     return balanceInEth;
+  }
+
+  /**
+   * Get the amount of COMP you would received incase you manually claim it
+   * This is received autmatically if your earned balacnce is > 0.001
+   */
+  public async getCompEarned(): Promise<string> {
+    const myContract = new web3.eth.Contract(
+      COMPOUND_LENS_INTERFACE,
+      config.compoundLensContract,
+    );
+    const compBalance = await myContract.methods
+      .getCompBalanceMetadataExt(
+        config.COMPContract,
+        config.comptrollerContract,
+        this.account.address,
+      )
+      .call();
+
+    const base: Decimal = new Decimal(10);
+    const coefficient: Decimal = base.pow(-18);
+    const actualBalance: Decimal = coefficient.mul(compBalance.allocated);
+    return actualBalance.toString();
+  }
+
+  /**
+   * Get th
+   */
+  public async claimComp() {
+    const contractAddress = config.comptrollerContract;
+    const myContract = new web3.eth.Contract(
+      COMPTROLLER_INTERFACE,
+      config.comptrollerContract,
+    );
+    const data = await myContract.methods
+      .claimComp(this.account.address)
+      .encodeABI();
+
+    await this.executeTX(contractAddress, data, '0x0', 'claimComp');
+  }
+
+  /**
+   * Get th
+   */
+  public async getBalanceComp(): Promise<string> {
+    const myContract = new web3.eth.Contract(
+      CTOKEN_JSON_INTERFACE,
+      config.COMPContract,
+    );
+    const balance = await myContract.methods
+      .balanceOf(this.account.address)
+      .call();
+
+    const decimals = await myContract.methods.decimals().call();
+
+    const base: Decimal = new Decimal(10);
+    const coefficient: Decimal = base.pow(-decimals);
+    const actualBalance: Decimal = coefficient.mul(balance);
+    return actualBalance.toString();
   }
 
   /**
@@ -466,6 +526,14 @@ export class Client {
     const gasPrice = Number(await web3.eth.getGasPrice());
     const gasPriceHex = web3.utils.toHex(gasPrice);
 
+    const result: any = await web3.eth.call({
+      from: this.account.address,
+      to: contractAddress,
+      data: data,
+      value: value,
+    });
+    console.log('Simulate Result', result);
+
     if (gasLimit == null) {
       gasLimit = await web3.eth.estimateGas({
         from: this.account.address,
@@ -474,6 +542,7 @@ export class Client {
         value: value,
       });
     }
+
     const gasLimitHex = web3.utils.toHex(gasLimit);
 
     console.log('Gas Price: ', gasPrice);
@@ -487,10 +556,10 @@ export class Client {
       data: data,
       value: value,
     };
+    console.log('TX', txParams);
     const tx = new Transaction(txParams, {
       chain: CHAIN,
     });
-    console.log(`TX: ${tx}`);
     return tx;
   }
 
@@ -498,6 +567,7 @@ export class Client {
   private async signTX(tx: Transaction): Promise<Buffer> {
     console.log('signing tx...');
     // alternatively, we can call `tx.hash()` and sign it using an external signer
+    console.log('Private Key', this.account.privateKey);
     tx.sign(Buffer.from(this.account.privateKey, 'hex'));
 
     const serializedTx = tx.serialize();

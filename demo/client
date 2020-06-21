@@ -1,154 +1,164 @@
 #!/usr/bin/env node
 
-const {Client} = require('../dist/src');
-const {getAPR, getContractAPR} = require('../dist/src')
+const { Client } = require('../dist/src');
+const { getAPR, getContractAPR } = require('../dist/src');
 
 const program = require('commander');
 
 const client = new Client();
 
+program
+  .command('address')
+  .option('-i, --init')
+  .option('-s, --show')
+  .action(async (options) => {
+    await client.init();
+    if (options.show) {
+      let a = await client.getAddress();
+      console.log(a);
+    }
+  });
 
 program
-    .command('address')
-    .option('-i, --init')
-    .option('-s, --show')
-    .action(async (options) => {
-        await client.init();
-        if (options.show) {
-            let a = await client.getAddress();
-            console.log(a);
-        }
-    });
+  .command('balance <symbol>')
+  .option('-d --db <dbpath>')
+  .action(async (symbol, options) => {
+    await client.init(options.db);
+    let balance;
+    console.log('symbol', symbol);
+    if (symbol === 'eth') {
+      balance = await client.getBalanceETH();
+    } else if (symbol === 'comp') {
+      balance = await client.getBalanceComp(symbol);
+    } else if (symbol.startsWith('c')) {
+      balance = await client.getBalanceCToken(symbol);
+    } else {
+      balance = await client.getBalanceToken('c' + symbol);
+    }
+    console.log(balance);
+  });
 
 program
-    .command('balance <symbol>')
-    .option('-d --db <dbpath>' )
-    .action(async (symbol, options) => {
-        await client.init(options.db);
-        let balance;
-        if (symbol === 'eth') {
-            balance = await client.getBalanceETH();
-        } else if (symbol.startsWith('c')) {
-            balance = await client.getBalanceCToken(symbol);
-        } else {
-            balance = await client.getBalanceToken("c"+symbol)
-        }
-        console.log(balance)
-    });
+  .command('comp_earned')
+  .option('-d --db <dbpath>')
+  .action(async (options) => {
+    await client.init(options.db);
+    let balance = await client.getCompEarned();
+    console.log(('COMP earned:', balance));
+  });
 
 program
-    .command('apr <symbol>')
-    .action(async (symbol) => {
-        let apr = await getAPR(symbol);
-        apr_num = Number(apr) * 100;
-        console.log (parseFloat(Math.round(apr_num * 100) / 100).toFixed(2) + "%")
-    });
+  .command('claim_comp')
+  .option('-d --db <dbpath>')
+  .action(async (options) => {
+    await client.init(options.db);
+    balance = await client.claimComp();
+  });
+
+program.command('apr <symbol>').action(async (symbol) => {
+  let apr = await getAPR(symbol);
+  apr_num = Number(apr) * 100;
+  console.log(parseFloat(Math.round(apr_num * 100) / 100).toFixed(2) + '%');
+});
+
+program.command('capr <symbol>').action(async (symbol) => {
+  let apr = await getContractAPR(symbol);
+  apr_num = Number(apr) * 100;
+  console.log(parseFloat(Math.round(apr_num * 100) / 100).toFixed(2) + '%');
+});
 
 program
-    .command('capr <symbol>')
-    .action(async (symbol) => {
-        let apr = await getContractAPR(symbol);
-        apr_num = Number(apr) * 100;
-        console.log (parseFloat(Math.round(apr_num * 100) / 100).toFixed(2) + "%")
-    });
+  .command('mint <symbol> <amount>')
+  .option('-d --db <dbpath>')
+  .action(async (symbol, amount, options) => {
+    await client.init(options.db);
+    if (symbol === 'ceth') {
+      client.mintCETH(amount);
+    } else {
+      client.mintCToken(symbol, amount);
+    }
+  });
 
 program
-    .command('mint <symbol> <amount>')
-    .option('-d --db <dbpath>' )
-    .action(async (symbol, amount, options) => {
-        await client.init(options.db);
-        if (symbol === "ceth") {
-            client.mintCETH(amount)
-        } else { 
-            client.mintCToken(symbol, amount)
-        }
-    });
-
+  .command('liquidate <account> <bsym> <amount> <csym>')
+  .option('-d --db <dbpath>')
+  .action(async (account, bsym, amount, csym, options) => {
+    await client.init(options.db);
+    client.liquidate(account, bsym, amount, csym);
+  });
 
 program
-    .command('liquidate <account> <bsym> <amount> <csym>')
-    .option('-d --db <dbpath>' )
-    .action(async (account, bsym, amount, csym, options) => {
-        await client.init(options.db);
-        client.liquidate(account, bsym, amount, csym)
-    });
+  .command('appmint <symbol> <amount>')
+  .option('-d --db <dbpath>')
+  .action(async (symbol, amount, options) => {
+    await client.init(options.db);
+    if (symbol === 'ceth') {
+      client.mintCETH(amount);
+    } else {
+      client.approveAndMintCToken(symbol, amount);
+    }
+  });
 
 program
-    .command('appmint <symbol> <amount>')
-    .option('-d --db <dbpath>' )
-    .action(async (symbol, amount, options) => {
-        await client.init(options.db);
-        if (symbol === "ceth") {
-            client.mintCETH(amount)
-        } else { 
-            client.approveAndMintCToken(symbol, amount)
-        }
-    });
+  .command('borrow <symbol> <amount>')
+  .option('-d --db <dbpath>')
+  .action(async (symbol, amount, options) => {
+    await client.init(options.db);
+    client.borrowCToken(symbol, amount);
+  });
+
+program.command('estimate <symbol> <amount>').action(async (symbol, amount) => {
+  await client.init(options.db);
+  await client.estimateCToken(symbol, amount);
+});
 
 program
-    .command('borrow <symbol> <amount>')
-    .option('-d --db <dbpath>' )
-    .action(async (symbol, amount, options) => {
-        await client.init(options.db);
-        client.borrowCToken(symbol, amount)
-    });
+  .command('redeem <symbol> <amount>')
+  .option('-d --db <dbpath>')
+  .action(async (symbol, amount, options) => {
+    await client.init(options.db);
+    if (amount == 'all') {
+      await client.redeemCToken(symbol, 0, true);
+    } else {
+      await client.redeemCToken(symbol, amount, false);
+    }
+  });
 
 program
-    .command('estimate <symbol> <amount>')
-    .action(async (symbol, amount) => {
-        await client.init(options.db);
-        await client.estimateCToken(symbol, amount);
-    });
+  .command('approve <symbol> <amount>')
+  .option('-d --db <dbpath>')
+  .action(async (symbol, amount, options) => {
+    await client.init(options.db);
+    await client.approveCToken(symbol, amount);
+  });
 
 program
-    .command('redeem <symbol> <amount>')
-    .option('-d --db <dbpath>' )
-    .action(async (symbol, amount, options) => {
-        await client.init(options.db);
-        if (amount == 'all') {
-            await client.redeemCToken(symbol, 0, true);
-        } else {
-            await client.redeemCToken(symbol, amount, false);
-        }
-
-    });
-
+  .command('enter <symbol>')
+  .option('-d --db <dbpath>')
+  .action(async (symbol, options) => {
+    await client.init(options.db);
+    if (symbol === 'all') {
+      await client.enterAllMarkets();
+    } else {
+      await client.enterMarket(symbol);
+    }
+  });
 
 program
-    .command('approve <symbol> <amount>')
-    .option('-d --db <dbpath>' )
-    .action(async (symbol, amount, options) => {
-        await client.init(options.db);
-        await client.approveCToken(symbol, amount);
-    });
+  .command('accrued <symbol>')
+  .option('-d --db <dbpath>')
+  .action(async (symbol, options) => {
+    await client.init(options.db);
+    let accrued = await client.accruedInterest(symbol);
+    console.log(accrued);
+  });
 
 program
-    .command('enter <symbol>')
-    .option('-d --db <dbpath>' )
-    .action(async (symbol, options) => {
-        await client.init(options.db);
-        if (symbol === "all") {
-            await client.enterAllMarkets();
-        } else {
-            await client.enterMarket(symbol);
-        }
-    });
-
-program
-    .command('accrued <symbol>')
-    .option('-d --db <dbpath>' )
-    .action(async (symbol, options) => {
-        await client.init(options.db);
-        let accrued = await client.accruedInterest(symbol);
-        console.log(accrued)
-    });
-
-program
-    .command('exit <symbol>')
-    .option('-d --db <dbpath>' )
-    .action(async (symbol, options) => {
-        await client.init(options.db);
-        await client.exitMarket(symbol);
-    });
+  .command('exit <symbol>')
+  .option('-d --db <dbpath>')
+  .action(async (symbol, options) => {
+    await client.init(options.db);
+    await client.exitMarket(symbol);
+  });
 
 program.parse(process.argv);
