@@ -41,4 +41,4 @@ dist/**/*
 
 node_modules
 
-client_db
+client_db*

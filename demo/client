@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { Client } = require('../dist/src');
+const { Client, getTransactionReceipt } = require('../dist/src');
 const { getAPR, getContractAPR } = require('../dist/src');
 
 const program = require('commander');
@@ -160,5 +160,9 @@ program
     await client.init(options.db);
     await client.exitMarket(symbol);
   });
+
+program.command('receipt <txhash>').action(async (txhash) => {
+  await getTransactionReceipt(txhash);
+});
 
 program.parse(process.argv);

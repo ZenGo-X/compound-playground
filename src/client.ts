@@ -17,7 +17,7 @@ import { COMPTROLLER_INTERFACE } from './comptroller-interface';
 import { COMPOUND_LENS_INTERFACE } from './compoundLense-interface';
 import { ERC20_INERFACE } from './erc20-interface';
 
-//const CHAIN = "mainnet";
+//const CHAIN = 'mainnet';
 const CHAIN = 'ropsten';
 
 const fetch = require('node-fetch');
@@ -31,7 +31,7 @@ const web3 = new Web3(
 );
 
 // TODO add logic to configure by network
-// import { config, markets_list, addressAPI } from "./ropstenConfig";
+// import { config, marketsList, addressAPI } from './mainnetConfig';
 import { config, marketsList, addressAPI } from './ropstenConfig';
 
 const CLIENT_DB_PATH = path.join(__dirname, '../../client_db');
@@ -567,7 +567,6 @@ export class Client {
   private async signTX(tx: Transaction): Promise<Buffer> {
     console.log('signing tx...');
     // alternatively, we can call `tx.hash()` and sign it using an external signer
-    console.log('Private Key', this.account.privateKey);
     tx.sign(Buffer.from(this.account.privateKey, 'hex'));
 
     const serializedTx = tx.serialize();
@@ -869,6 +868,14 @@ function addressToSymbol(address: string): string {
     }
   }
   return '0x0';
+}
+
+export async function getTransactionReceipt(
+  txHash: string,
+): Promise<TransactionReceipt> {
+  const receipt = await web3.eth.getTransactionReceipt(txHash);
+  console.log(receipt);
+  return receipt;
 }
 
 async function extractGasUsedFromReceipt(
