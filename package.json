@@ -21,7 +21,7 @@
     "export-to-csv": "^0.2.1",
     "lowdb": "^1.0.0",
     "minimist": "^1.2.5",
-    "node-fetch": "^2.6.0",
+    "node-fetch": "^2.6.1",
     "typescript": "^3.7.5",
     "web3": "^1.2.5"
   },
